@@ -33,7 +33,7 @@ O TaleonTracker é uma aplicação web que monitora automaticamente a evolução
 
 1. Clone o repositório:
 ```bash
-git clone https://github.com/seu-usuario/TaleonTracker.git
+git clone https://github.com/canetex/TaleonTracker.git
 cd TaleonTracker
 ```
 
@@ -48,7 +48,8 @@ cp .env.example .env
 docker-compose up -d
 ```
 
-4. Acesse a aplicação em `https://seu-dominio`
+4. Acesse a aplicação em `https://seu-dominio:3000`
+   Acesse o backend em `https://seu-dominio:8000`
 
 ## Estrutura do Projeto
 
