@@ -17,7 +17,7 @@ def scrape_character_data(character_name: str, db: Session) -> bool:
     try:
         # URL do site do Taleon com encoding correto do nome
         encoded_name = urllib.parse.quote(character_name)
-        url = f"https://san.taleon.online/characterprofile.php?name={encoded_name}"
+        url = f"http://localhost:8000/api/proxy/taleon/characterprofile.php?name={encoded_name}"
         
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -30,8 +30,7 @@ def scrape_character_data(character_name: str, db: Session) -> bool:
             'Sec-Fetch-Mode': 'navigate',
             'Sec-Fetch-Site': 'none',
             'Sec-Fetch-User': '?1',
-            'Cache-Control': 'max-age=0',
-            'Referer': 'https://san.taleon.online/'
+            'Cache-Control': 'max-age=0'
         }
         
         # Adiciona um pequeno delay para evitar sobrecarga

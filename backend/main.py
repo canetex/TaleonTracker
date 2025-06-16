@@ -7,7 +7,7 @@ import os
 from dotenv import load_dotenv
 
 from database import engine, Base
-from routers import characters, auth
+from routers import characters, auth, proxy
 from services.scraper import scrape_character_data
 from services.scheduler import schedule_daily_scrape
 
@@ -37,6 +37,7 @@ app.add_middleware(
 # Inclui os routers
 app.include_router(auth.router, prefix="/api/auth", tags=["Autenticação"])
 app.include_router(characters.router, prefix="/api/characters", tags=["Personagens"])
+app.include_router(proxy.router, prefix="/api/proxy", tags=["Proxy"])
 
 # Inicializa o scheduler
 scheduler = BackgroundScheduler()
