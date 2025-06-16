@@ -4,15 +4,22 @@ from sqlalchemy.orm import Session
 from models.character import Character
 from models.character_history import CharacterHistory
 from datetime import datetime
+import urllib.parse
 
 def scrape_character_data(character_name: str, db: Session) -> bool:
     try:
-        # URL do site do Taleon
-        url = f"https://san.taleon.online/characterprofile.php?name={character_name}"
+        # URL do site do Taleon com encoding correto do nome
+        encoded_name = urllib.parse.quote(character_name)
+        url = f"https://san.taleon.online/characterprofile.php?name={encoded_name}"
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1'
         }
         
+        print(f"Fazendo requisição para: {url}")
         response = requests.get(url, headers=headers)
         response.raise_for_status()
         
@@ -34,9 +41,16 @@ def scrape_character_data(character_name: str, db: Session) -> bool:
                 key = cols[0].text.strip().lower()
                 value = cols[1].text.strip()
                 character_data[key] = value
+                print(f"Encontrado: {key} = {value}")
         
         # Converter dados
-        level = int(character_data.get('level', '0').replace(',', ''))
+        try:
+            level_text = character_data.get('level', '0').replace(',', '')
+            level = int(level_text)
+        except ValueError:
+            print(f"Erro ao converter nível: {level_text}")
+            level = 0
+            
         vocation = character_data.get('vocation', '')
         world = 'Taleon'  # Mundo fixo para o Taleon
         
@@ -51,7 +65,9 @@ def scrape_character_data(character_name: str, db: Session) -> bool:
                     exp_text = cols[1].text.strip().replace(',', '')
                     try:
                         experience = int(exp_text)
+                        print(f"Experiência encontrada: {experience}")
                     except ValueError:
+                        print(f"Erro ao converter experiência: {exp_text}")
                         experience = 0
                     break
         
@@ -60,6 +76,7 @@ def scrape_character_data(character_name: str, db: Session) -> bool:
         deaths = 0
         if deaths_table:
             deaths = len(deaths_table.find_all('tr')) - 1  # -1 para excluir o cabeçalho
+            print(f"Mortes encontradas: {deaths}")
         
         # Atualizar ou criar o personagem no banco
         character = db.query(Character).filter(Character.name == character_name).first()
@@ -73,11 +90,13 @@ def scrape_character_data(character_name: str, db: Session) -> bool:
             db.add(character)
             db.commit()
             db.refresh(character)
+            print(f"Personagem criado: {character_name}")
         else:
             character.level = level
             character.vocation = vocation
             character.world = world
             db.commit()
+            print(f"Personagem atualizado: {character_name}")
         
         # Criar histórico
         history = CharacterHistory(
@@ -90,6 +109,7 @@ def scrape_character_data(character_name: str, db: Session) -> bool:
         
         db.add(history)
         db.commit()
+        print(f"Histórico criado para: {character_name}")
         return True
         
     except Exception as e:
