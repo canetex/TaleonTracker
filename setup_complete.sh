@@ -125,6 +125,122 @@ cleanup_previous_installation() {
     fi
 }
 
+# Função para verificar se um serviço está rodando
+check_service() {
+    if systemctl is-active --quiet $1; then
+        echo "✅ $1 está rodando"
+    else
+        echo "❌ $1 não está rodando"
+        exit 1
+    fi
+}
+
+# Função para verificar se uma porta está em uso
+check_port() {
+    if netstat -tuln | grep -q ":$1 "; then
+        echo "✅ Porta $1 está em uso"
+    else
+        echo "❌ Porta $1 não está em uso"
+        exit 1
+    fi
+}
+
+# Função para verificar se um diretório existe
+check_directory() {
+    if [ -d "$1" ]; then
+        echo "✅ Diretório $1 existe"
+    else
+        echo "❌ Diretório $1 não existe"
+        exit 1
+    fi
+}
+
+# Função para verificar se um arquivo existe
+check_file() {
+    if [ -f "$1" ]; then
+        echo "✅ Arquivo $1 existe"
+    else
+        echo "❌ Arquivo $1 não existe"
+        exit 1
+    fi
+}
+
+# Função para verificar se um comando existe
+check_command() {
+    if command -v $1 &> /dev/null; then
+        echo "✅ Comando $1 está disponível"
+    else
+        echo "❌ Comando $1 não está disponível"
+        exit 1
+    fi
+}
+
+echo "🔍 Iniciando verificação do sistema..."
+
+# Verificar serviços
+echo "📡 Verificando serviços..."
+check_service "postgresql"
+check_service "nginx"
+check_service "redis-server"
+check_service "taleontracker"
+
+# Verificar portas
+echo "🔌 Verificando portas..."
+check_port "80"    # Nginx
+check_port "5432"  # PostgreSQL
+check_port "8000"  # Backend
+check_port "6379"  # Redis
+
+# Verificar diretórios
+echo "📁 Verificando diretórios..."
+check_directory "/opt/taleontracker"
+check_directory "/opt/taleontracker/backend"
+check_directory "/opt/taleontracker/frontend"
+check_directory "/opt/taleontracker/backend/venv"
+
+# Verificar arquivos
+echo "📄 Verificando arquivos..."
+check_file "/opt/taleontracker/backend/main.py"
+check_file "/opt/taleontracker/backend/requirements.txt"
+check_file "/etc/nginx/sites-available/taleontracker"
+check_file "/etc/systemd/system/taleontracker.service"
+
+# Verificar comandos
+echo "🔧 Verificando comandos..."
+check_command "python3"
+check_command "pip"
+check_command "uvicorn"
+check_command "redis-cli"
+
+# Verificar conexão com o banco de dados
+echo "💾 Verificando conexão com o banco de dados..."
+if psql -h localhost -U postgres -d taleontracker -c "SELECT 1" &> /dev/null; then
+    echo "✅ Conexão com o banco de dados OK"
+else
+    echo "❌ Erro na conexão com o banco de dados"
+    exit 1
+fi
+
+# Verificar conexão com o Redis
+echo "🔴 Verificando conexão com o Redis..."
+if redis-cli ping &> /dev/null; then
+    echo "✅ Conexão com o Redis OK"
+else
+    echo "❌ Erro na conexão com o Redis"
+    exit 1
+fi
+
+# Verificar API
+echo "🌐 Verificando API..."
+if curl -s http://localhost:8000/api/health &> /dev/null; then
+    echo "✅ API está respondendo"
+else
+    echo "❌ API não está respondendo"
+    exit 1
+fi
+
+echo "✅ Verificação completa! Todos os componentes estão funcionando corretamente."
+
 # Verificar dependências necessárias
 echo -e "${YELLOW}Verificando dependências...${NC}"
 check_command git || exit 1
