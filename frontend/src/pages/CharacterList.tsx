@@ -48,13 +48,15 @@ const CharacterList: React.FC = () => {
 
   const handleAddCharacter = async () => {
     try {
-      await api.post('/characters', { name: newCharacterName });
+      console.log('Enviando dados:', { name: newCharacterName });
+      const response = await api.post('/characters', { name: newCharacterName });
+      console.log('Resposta:', response.data);
       setOpenDialog(false);
       setNewCharacterName('');
       fetchCharacters();
-    } catch (err) {
-      setError('Erro ao adicionar personagem');
-      console.error(err);
+    } catch (err: any) {
+      console.error('Erro detalhado:', err.response?.data || err.message);
+      setError('Erro ao adicionar personagem: ' + (err.response?.data?.detail || err.message));
     }
   };
 
