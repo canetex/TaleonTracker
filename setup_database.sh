@@ -7,7 +7,7 @@ source /opt/taleontracker/venv/bin/activate
 cd /opt/taleontracker/backend
 
 # Executar o script de inicialização do banco de dados
-python3 init_db.py
+PYTHONPATH=/opt/taleontracker python3 init_db.py
 
 # Verificar se o PostgreSQL está rodando
 systemctl status postgresql
