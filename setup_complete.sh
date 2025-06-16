@@ -96,6 +96,14 @@ verify_services() {
     fi
 }
 
+# Função para limpar instalação anterior
+cleanup_previous_installation() {
+    echo -e "${YELLOW}Limpando instalação anterior...${NC}"
+    if [ -d "/opt/taleontracker" ]; then
+        rm -rf /opt/taleontracker
+    fi
+}
+
 # Verificar dependências necessárias
 echo -e "${YELLOW}Verificando dependências...${NC}"
 check_command git || exit 1
@@ -111,6 +119,24 @@ apt upgrade -y
 
 # Configurar firewall
 setup_firewall
+
+# Limpar instalação anterior
+cleanup_previous_installation
+
+# Criar diretório de instalação
+echo -e "${YELLOW}Criando diretório de instalação...${NC}"
+mkdir -p /opt/taleontracker
+
+# Clonar o repositório
+echo -e "${YELLOW}Clonando repositório...${NC}"
+git clone https://github.com/canetex/TaleonTracker.git /opt/taleontracker
+
+# Dar permissões necessárias
+echo -e "${YELLOW}Configurando permissões...${NC}"
+chmod +x /opt/taleontracker/*.sh
+
+# Navegar até o diretório
+cd /opt/taleontracker
 
 # Executar script de configuração do LXC
 echo -e "${YELLOW}Configurando ambiente LXC...${NC}"
