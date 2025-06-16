@@ -28,7 +28,6 @@ const CharacterList: React.FC = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [newCharacterName, setNewCharacterName] = useState('');
   const [updatingId, setUpdatingId] = useState<number | null>(null);
-  const [lastUpdateResponse, setLastUpdateResponse] = useState<any>(null);
 
   const fetchCharacters = async () => {
     try {
@@ -84,22 +83,12 @@ const CharacterList: React.FC = () => {
       console.log('Resposta recebida:', response);
       
       if (response) {
-        setLastUpdateResponse({
-          status: 200,
-          statusText: 'OK',
-          data: response
-        });
-        
         await fetchCharacters();
       } else {
         throw new Error('Resposta vazia da API');
       }
     } catch (error) {
       console.error('Erro ao atualizar personagem:', error);
-      setLastUpdateResponse({
-        error: error instanceof Error ? error.message : 'Erro desconhecido',
-        timestamp: new Date().toISOString()
-      });
     } finally {
       setUpdatingId(null);
     }
@@ -197,25 +186,6 @@ const CharacterList: React.FC = () => {
           )}
         </Box>
       )}
-
-      {/* Div temporária para debug */}
-      <Box sx={{ mt: 4, p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
-        <Typography variant="h6" gutterBottom>
-          Debug - Retorno da API
-        </Typography>
-        <Typography variant="subtitle1" gutterBottom>
-          Última atualização:
-        </Typography>
-        <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-          {JSON.stringify(lastUpdateResponse, null, 2)}
-        </pre>
-        <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
-          Lista de personagens:
-        </Typography>
-        <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-          {JSON.stringify(characters, null, 2)}
-        </pre>
-      </Box>
 
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
         <DialogTitle>Adicionar Novo Personagem</DialogTitle>
