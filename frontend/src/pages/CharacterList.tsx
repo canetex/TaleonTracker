@@ -96,45 +96,71 @@ const CharacterList: React.FC = () => {
         </Typography>
       )}
 
-      <Grid container spacing={3}>
-        {characters.map((character) => (
-          <Grid item xs={12} sm={6} md={4} key={character.id}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  {character.name}
-                </Typography>
-                <Typography color="textSecondary">
-                  Nível: {character.history[0]?.level || 'N/A'}
-                </Typography>
-                <Typography color="textSecondary">
-                  Experiência: {character.history[0]?.experience.toLocaleString() || 'N/A'}
-                </Typography>
-                <Typography color="textSecondary">
-                  Mortes: {character.history[0]?.deaths || 0}
-                </Typography>
-              </CardContent>
-              <CardActions>
-                <Button
-                  size="small"
-                  color="primary"
-                  onClick={() => navigate(`/characters/${character.id}`)}
-                >
-                  Detalhes
-                </Button>
-                <Button
-                  size="small"
-                  color="secondary"
-                  startIcon={<RefreshIcon />}
-                  onClick={() => handleUpdateCharacter(character.id)}
-                >
-                  Atualizar
-                </Button>
-              </CardActions>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+      {!error && characters.length === 0 ? (
+        <Box 
+          display="flex" 
+          flexDirection="column" 
+          alignItems="center" 
+          justifyContent="center" 
+          minHeight="40vh"
+          textAlign="center"
+        >
+          <Typography variant="h6" color="textSecondary" gutterBottom>
+            Nenhum personagem cadastrado
+          </Typography>
+          <Typography color="textSecondary" mb={3}>
+            Clique no botão "Novo Personagem" para começar a rastrear seus personagens
+          </Typography>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddIcon />}
+            onClick={() => setOpenDialog(true)}
+          >
+            Adicionar Primeiro Personagem
+          </Button>
+        </Box>
+      ) : (
+        <Grid container spacing={3}>
+          {characters.map((character) => (
+            <Grid item xs={12} sm={6} md={4} key={character.id}>
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>
+                    {character.name}
+                  </Typography>
+                  <Typography color="textSecondary">
+                    Nível: {character.history[0]?.level || 'N/A'}
+                  </Typography>
+                  <Typography color="textSecondary">
+                    Experiência: {character.history[0]?.experience.toLocaleString() || 'N/A'}
+                  </Typography>
+                  <Typography color="textSecondary">
+                    Mortes: {character.history[0]?.deaths || 0}
+                  </Typography>
+                </CardContent>
+                <CardActions>
+                  <Button
+                    size="small"
+                    color="primary"
+                    onClick={() => navigate(`/characters/${character.id}`)}
+                  >
+                    Detalhes
+                  </Button>
+                  <Button
+                    size="small"
+                    color="secondary"
+                    startIcon={<RefreshIcon />}
+                    onClick={() => handleUpdateCharacter(character.id)}
+                  >
+                    Atualizar
+                  </Button>
+                </CardActions>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      )}
 
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
         <DialogTitle>Adicionar Novo Personagem</DialogTitle>
