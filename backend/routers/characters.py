@@ -75,3 +75,21 @@ def update_character(character_id: int, db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"Erro ao atualizar personagem: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/{character_id}")
+def delete_character(character_id: int, db: Session = Depends(get_db)):
+    try:
+        character = db.query(Character).filter(Character.id == character_id).first()
+        if not character:
+            raise HTTPException(status_code=404, detail="Personagem não encontrado")
+        
+        logger.info(f"Excluindo personagem: {character.name}")
+        db.delete(character)
+        db.commit()
+        logger.info(f"Personagem {character.name} excluído com sucesso")
+        return {"message": "Personagem excluído com sucesso"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erro ao excluir personagem: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
