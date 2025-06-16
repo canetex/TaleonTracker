@@ -5,6 +5,7 @@ import {
   Typography,
   Box,
   CircularProgress,
+  Button,
 } from '@mui/material';
 import {
   Chart as ChartJS,
@@ -17,9 +18,11 @@ import {
   Legend,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
+import { Add as AddIcon } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 
 import { api } from '../services/api';
-import { Character, CharacterHistory } from '../types';
+import { Character } from '../types';
 
 ChartJS.register(
   CategoryScale,
@@ -32,6 +35,7 @@ ChartJS.register(
 );
 
 const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [characters, setCharacters] = useState<Character[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +45,7 @@ const Dashboard: React.FC = () => {
       try {
         const response = await api.get('/characters');
         setCharacters(response.data);
+        setError(null);
       } catch (err) {
         setError('Erro ao carregar dados dos personagens');
         console.error(err);
@@ -64,6 +69,37 @@ const Dashboard: React.FC = () => {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
         <Typography color="error">{error}</Typography>
+      </Box>
+    );
+  }
+
+  if (characters.length === 0) {
+    return (
+      <Box 
+        display="flex" 
+        flexDirection="column" 
+        alignItems="center" 
+        justifyContent="center" 
+        minHeight="60vh"
+        textAlign="center"
+      >
+        <Typography variant="h5" color="textSecondary" gutterBottom>
+          Bem-vindo ao TaleonTracker!
+        </Typography>
+        <Typography variant="h6" color="textSecondary" gutterBottom>
+          Nenhum personagem cadastrado
+        </Typography>
+        <Typography color="textSecondary" mb={3}>
+          Comece adicionando seu primeiro personagem para rastrear seu progresso
+        </Typography>
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<AddIcon />}
+          onClick={() => navigate('/characters')}
+        >
+          Adicionar Primeiro Personagem
+        </Button>
       </Box>
     );
   }
