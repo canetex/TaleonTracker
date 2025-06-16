@@ -44,7 +44,7 @@ const CharacterDetail: React.FC = () => {
   const fetchCharacter = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/characters/${id}/history`);
+      const response = await api.get(`/api/characters/${id}/history`);
       setCharacter(response.data);
       setError(null);
     } catch (err) {
@@ -61,7 +61,7 @@ const CharacterDetail: React.FC = () => {
 
   const handleUpdate = async () => {
     try {
-      await api.post(`/characters/${id}/update`);
+      await api.post(`/api/characters/${id}/update`);
       fetchCharacter();
     } catch (err) {
       setError('Erro ao atualizar dados do personagem');

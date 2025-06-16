@@ -64,7 +64,7 @@ export const addCharacter = async (characterData: any) => {
 
 export const updateCharacter = async (id: number, characterData: any) => {
   try {
-    const response: AxiosResponse = await api.put(`/api/characters/${id}`, characterData);
+    const response: AxiosResponse = await api.put('/api/characters/${id}', characterData);
     return response.data;
   } catch (error) {
     if (error instanceof AxiosError) {
@@ -76,7 +76,7 @@ export const updateCharacter = async (id: number, characterData: any) => {
 
 export const deleteCharacter = async (id: number) => {
   try {
-    const response: AxiosResponse = await api.delete(`/api/characters/${id}`);
+    const response: AxiosResponse = await api.delete('/api/characters/${id}');
     return response.data;
   } catch (error) {
     if (error instanceof AxiosError) {
