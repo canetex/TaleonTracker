@@ -6,8 +6,10 @@ export const api = axios.create({
   baseURL,
   headers: {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
   },
-  timeout: 5000, // Adiciona um timeout de 5 segundos
+  timeout: 10000, // Aumenta o timeout para 10 segundos
+  withCredentials: false, // Desabilita o envio de cookies
 });
 
 // Interceptor para tratamento de erros
@@ -17,6 +19,9 @@ api.interceptors.response.use(
     if (error.response) {
       // O servidor respondeu com um status de erro
       console.error('Erro na resposta:', error.response.data);
+      if (error.response.status === 403) {
+        console.error('Erro de CORS ou permissão negada');
+      }
     } else if (error.request) {
       // A requisição foi feita mas não houve resposta
       console.error('Erro na requisição:', error.request);
