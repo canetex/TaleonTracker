@@ -71,6 +71,9 @@ async def scrape_character_data(character_name: str, db: Session) -> bool:
                 character_data[key] = value
                 logger.info(f"Encontrado: {key} = {value}")
         
+        # Log dos dados encontrados
+        logger.info(f"Dados encontrados para {character_name}: {character_data}")
+        
         # Atualiza o personagem no banco de dados
         character = db.query(Character).filter(Character.name == character_name).first()
         if character:
@@ -80,13 +83,34 @@ async def scrape_character_data(character_name: str, db: Session) -> bool:
                 character.vocation = character_data.get('vocation', '')
                 character.world = character_data.get('world', '')
                 
+                # Extrai experiência e mortes
+                experience = 0
+                deaths = 0
+                
+                # Tenta extrair experiência
+                exp_text = character_data.get('experience', '0')
+                if exp_text:
+                    # Remove caracteres não numéricos
+                    exp_text = re.sub(r'[^\d]', '', exp_text)
+                    experience = float(exp_text) if exp_text else 0
+                
+                # Tenta extrair mortes
+                deaths_text = character_data.get('deaths', '0')
+                if deaths_text:
+                    # Remove caracteres não numéricos
+                    deaths_text = re.sub(r'[^\d]', '', deaths_text)
+                    deaths = int(deaths_text) if deaths_text else 0
+                
+                logger.info(f"Experiência extraída: {experience}")
+                logger.info(f"Mortes extraídas: {deaths}")
+                
                 # Cria um novo registro de histórico
                 try:
                     history = CharacterHistory(
                         character_id=character.id,
                         level=int(character_data.get('level', 0)),
-                        experience=float(character_data.get('experience', 0)),
-                        deaths=int(character_data.get('deaths', 0)),
+                        experience=experience,
+                        deaths=deaths,
                         timestamp=datetime.utcnow()
                     )
                     db.add(history)
