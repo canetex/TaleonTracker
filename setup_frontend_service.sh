@@ -6,8 +6,8 @@ if ! command -v node &> /dev/null; then
     apt-get install -y nodejs
 fi
 
-# Instalar serve globalmente
-npm install -g serve
+# Instalar PM2 globalmente
+npm install -g pm2
 
 # Criar diretório de instalação
 mkdir -p /opt/taleontracker/frontend
@@ -15,20 +15,20 @@ mkdir -p /opt/taleontracker/frontend
 # Copiar arquivos do frontend
 cp -r frontend/* /opt/taleontracker/frontend/
 
-# Instalar dependências e fazer build
+# Instalar dependências
 cd /opt/taleontracker/frontend
 npm install
-npm run build
 
-# Copiar arquivo de serviço
-cp /root/TaleonTracker/frontend/taleontracker-frontend.service /etc/systemd/system/
+# Configurar PM2 para gerenciar o frontend
+pm2 start npm --name "taleontracker-frontend" -- start
 
-# Recarregar systemd
-systemctl daemon-reload
-
-# Habilitar e iniciar o serviço
-systemctl enable taleontracker-frontend.service
-systemctl start taleontracker-frontend.service
+# Configurar PM2 para iniciar automaticamente com o sistema
+pm2 startup
+pm2 save
 
 # Verificar status
-systemctl status taleontracker-frontend.service 
+pm2 status
+
+# Mostrar logs
+echo "Logs do frontend:"
+pm2 logs taleontracker-frontend --lines 10 
