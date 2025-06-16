@@ -18,7 +18,7 @@ interface ApiResponse<T> {
 }
 
 // Usa a URL base do ambiente
-const baseURL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const baseURL = process.env.REACT_APP_API_URL || 'http://192.168.1.200:8000';
 
 console.log('API URL:', baseURL); // Debug
 
