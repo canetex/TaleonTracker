@@ -36,4 +36,46 @@ api.interceptors.response.use(
     }
     return Promise.reject(error);
   }
-); 
+);
+
+export const getCharacters = async () => {
+  try {
+    const response = await api.get('/api/characters');
+    return response.data;
+  } catch (error) {
+    console.error('Erro na resposta:', error.response?.data);
+    throw error;
+  }
+};
+
+export const addCharacter = async (characterData: any) => {
+  try {
+    const response = await api.post('/api/characters', characterData);
+    return response.data;
+  } catch (error) {
+    console.error('Erro na resposta:', error.response?.data);
+    throw error;
+  }
+};
+
+export const updateCharacter = async (id: number, characterData: any) => {
+  try {
+    const response = await api.put(`/api/characters/${id}`, characterData);
+    return response.data;
+  } catch (error) {
+    console.error('Erro na resposta:', error.response?.data);
+    throw error;
+  }
+};
+
+export const deleteCharacter = async (id: number) => {
+  try {
+    const response = await api.delete(`/api/characters/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error('Erro na resposta:', error.response?.data);
+    throw error;
+  }
+};
+
+export default api; 
