@@ -14,7 +14,7 @@ systemctl daemon-reload
 
 # Habilitar e iniciar o serviço
 systemctl enable taleontracker.service
-systemctl start taleontracker.service
+systemctl restart taleontracker.service
 
 # Verificar status
 systemctl status taleontracker.service 
