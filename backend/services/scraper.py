@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 async def get_character_html(character_name: str) -> str:
     """Obtém o HTML do perfil do personagem com cache"""
     encoded_name = quote(character_name)
-    url = f"http://localhost:8000/api/proxy/taleon/characterprofile.php?name={encoded_name}"
+    url = f"http://192.168.1.200:8000/api/proxy/taleon/characterprofile.php?name={encoded_name}"
     
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
