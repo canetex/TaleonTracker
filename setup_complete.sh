@@ -67,6 +67,27 @@ setup_firewall() {
     echo -e "${GREEN}Firewall configurado com sucesso!${NC}"
 }
 
+# Função para configurar o PostgreSQL
+setup_postgresql() {
+    echo -e "${YELLOW}Configurando PostgreSQL...${NC}"
+    
+    # Remover banco e usuário existentes
+    sudo -u postgres psql -c "DROP DATABASE IF EXISTS taleontracker;"
+    sudo -u postgres psql -c "DROP ROLE IF EXISTS taleon;"
+    
+    # Criar usuário e banco
+    sudo -u postgres psql -c "CREATE USER taleon WITH PASSWORD 'taleon123';"
+    sudo -u postgres psql -c "CREATE DATABASE taleontracker OWNER taleon;"
+    
+    # Conceder privilégios
+    sudo -u postgres psql -d taleontracker -c "GRANT ALL PRIVILEGES ON DATABASE taleontracker TO taleon;"
+    sudo -u postgres psql -d taleontracker -c "GRANT ALL PRIVILEGES ON SCHEMA public TO taleon;"
+    sudo -u postgres psql -d taleontracker -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO taleon;"
+    sudo -u postgres psql -d taleontracker -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO taleon;"
+    
+    echo -e "${GREEN}PostgreSQL configurado com sucesso!${NC}"
+}
+
 # Função para verificar o status dos serviços
 verify_services() {
     echo -e "${YELLOW}Verificando status dos serviços...${NC}"
@@ -137,6 +158,9 @@ chmod +x /opt/taleontracker/*.sh
 
 # Navegar até o diretório
 cd /opt/taleontracker
+
+# Configurar PostgreSQL
+setup_postgresql
 
 # Executar script de configuração do LXC
 echo -e "${YELLOW}Configurando ambiente LXC...${NC}"
