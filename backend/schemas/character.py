@@ -4,10 +4,14 @@ from typing import List, Optional
 
 class CharacterHistoryBase(BaseModel):
     level: int
-    experience: int
+    experience: float
+    deaths: int
     timestamp: datetime
 
-class CharacterHistoryResponse(CharacterHistoryBase):
+class CharacterHistoryCreate(CharacterHistoryBase):
+    pass
+
+class CharacterHistory(CharacterHistoryBase):
     id: int
     character_id: int
 
@@ -20,13 +24,14 @@ class CharacterBase(BaseModel):
     vocation: str
     world: str
 
-class CharacterCreate(BaseModel):
-    name: str
+class CharacterCreate(CharacterBase):
+    pass
 
 class CharacterResponse(CharacterBase):
     id: int
-    last_updated: datetime
-    history: Optional[List[CharacterHistoryResponse]] = []
+    created_at: datetime
+    updated_at: datetime
+    history: List[CharacterHistory]
 
     class Config:
         from_attributes = True
