@@ -101,7 +101,10 @@ async def scrape_character_data(character_name: str, db: Session) -> bool:
         if character:
             try:
                 # Atualiza os dados básicos do personagem
-                character.level = int(character_data.get('level', 0))
+                level_text = character_data.get('level', '0')
+                # Remove caracteres não numéricos exceto ponto
+                level_text = re.sub(r'[^\d.]', '', level_text)
+                character.level = int(float(level_text))
                 character.vocation = character_data.get('vocation', '')
                 character.world = character_data.get('residence', '')  # Usando residence como world
                 
