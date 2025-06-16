@@ -102,4 +102,16 @@ export const deleteCharacter = async (id: number): Promise<void> => {
   }
 };
 
+export const updateCharacterData = async (id: number): Promise<Character> => {
+  try {
+    const response: AxiosResponse<ApiResponse<Character>> = await api.post(`/api/characters/${id}/update`);
+    return response.data.data;
+  } catch (error: unknown) {
+    if (error instanceof AxiosError) {
+      console.error('Erro ao atualizar dados do personagem:', error.response?.data);
+    }
+    throw error;
+  }
+};
+
 export default api; 

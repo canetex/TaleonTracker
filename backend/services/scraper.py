@@ -48,10 +48,9 @@ async def scrape_character_data(character_name: str, db: Session) -> bool:
         
         # Obtém o HTML com cache
         html_content = await get_character_html(character_name)
+        logger.info(f"HTML obtido com sucesso para {character_name}")
         
         soup = BeautifulSoup(html_content, 'html.parser')
-        
-        # Log do HTML para debug
         logger.info(f"HTML parseado para {character_name}")
         
         # Encontra a tabela com as informações do personagem
@@ -98,6 +97,7 @@ async def scrape_character_data(character_name: str, db: Session) -> bool:
                     # Remove caracteres não numéricos
                     exp_text = re.sub(r'[^\d]', '', exp_text)
                     experience = float(exp_text) if exp_text else 0
+                    logger.info(f"Experiência extraída de '{exp_text}' para {experience}")
                 
                 # Tenta extrair mortes
                 deaths_text = character_data.get('deaths', '0')
@@ -105,9 +105,7 @@ async def scrape_character_data(character_name: str, db: Session) -> bool:
                     # Remove caracteres não numéricos
                     deaths_text = re.sub(r'[^\d]', '', deaths_text)
                     deaths = int(deaths_text) if deaths_text else 0
-                
-                logger.info(f"Experiência extraída: {experience}")
-                logger.info(f"Mortes extraídas: {deaths}")
+                    logger.info(f"Mortes extraídas de '{deaths_text}' para {deaths}")
                 
                 # Cria um novo registro de histórico
                 try:
