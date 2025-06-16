@@ -16,11 +16,14 @@ import asyncio
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# URL base do Taleon
+TALEON_BASE_URL = "https://san.taleon.online"
+
 @cache(expire=300)  # Cache por 5 minutos
 async def get_character_html(character_name: str) -> str:
     """Obtém o HTML do perfil do personagem com cache"""
     encoded_name = quote(character_name)
-    url = f"http://192.168.1.200:8000/api/proxy/taleon/characterprofile.php?name={encoded_name}"
+    url = f"{TALEON_BASE_URL}/characterprofile.php?name={encoded_name}"
     
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -32,11 +35,22 @@ async def get_character_html(character_name: str) -> str:
     
     try:
         logger.info(f"Fazendo requisição para: {url}")
+        logger.info(f"Headers da requisição: {headers}")
+        
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers, timeout=10) as response:
                 response.raise_for_status()
+                logger.info(f"Status da resposta: {response.status}")
+                logger.info(f"Headers da resposta: {response.headers}")
+                
                 html_content = await response.text()
                 logger.info(f"HTML recebido para {character_name} (tamanho: {len(html_content)})")
+                logger.info(f"Primeiros 1000 caracteres do HTML: {html_content[:1000]}")
+                
+                if len(html_content) < 100:
+                    logger.error(f"HTML muito curto, possivel erro na resposta: {html_content}")
+                    raise Exception("HTML muito curto, possivel erro na resposta")
+                
                 return html_content
     except Exception as e:
         logger.error(f"Erro ao obter HTML para {character_name}: {str(e)}")
