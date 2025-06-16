@@ -22,7 +22,7 @@ import { Line } from 'react-chartjs-2';
 import { ArrowBack as ArrowBackIcon, Refresh as RefreshIcon } from '@mui/icons-material';
 
 import { api } from '../services/api';
-import { Character, CharacterHistory } from '../types';
+import { Character } from '../types';
 
 ChartJS.register(
   CategoryScale,
@@ -57,7 +57,7 @@ const CharacterDetail: React.FC = () => {
 
   useEffect(() => {
     fetchCharacter();
-  }, [id]);
+  }, [id, fetchCharacter]);
 
   const handleUpdate = async () => {
     try {

@@ -15,12 +15,15 @@ mkdir -p /opt/taleontracker/frontend
 # Copiar arquivos do frontend
 cp -r frontend/* /opt/taleontracker/frontend/
 
-# Instalar dependências
-cd /opt/taleontracker/frontend
-npm install
+# Obter o IP atual da máquina
+CURRENT_IP=$(hostname -I | awk '{print $1}')
 
 # Configurar variáveis de ambiente
-echo "REACT_APP_API_URL=http://localhost:8000" > .env
+cd /opt/taleontracker/frontend
+echo "REACT_APP_API_URL=http://${CURRENT_IP}:8000" > .env
+
+# Instalar dependências
+npm install
 
 # Configurar PM2 para gerenciar o frontend
 pm2 start npm --name "taleontracker-frontend" -- start
