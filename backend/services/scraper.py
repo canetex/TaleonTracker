@@ -88,7 +88,7 @@ async def scrape_character_data(character_name: str, db: Session) -> bool:
         for row in rows:
             cols = row.find_all('td')
             if len(cols) >= 2:
-                key = cols[0].text.strip().lower()
+                key = cols[0].text.strip().lower().replace(':', '')
                 value = cols[1].text.strip()
                 character_data[key] = value
                 logger.info(f"Encontrado: {key} = {value}")
@@ -103,7 +103,7 @@ async def scrape_character_data(character_name: str, db: Session) -> bool:
                 # Atualiza os dados básicos do personagem
                 character.level = int(character_data.get('level', 0))
                 character.vocation = character_data.get('vocation', '')
-                character.world = character_data.get('world', '')
+                character.world = character_data.get('residence', '')  # Usando residence como world
                 
                 # Extrai experiência e mortes
                 experience = 0
