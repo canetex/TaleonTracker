@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
-import requests
+import aiohttp
 import logging
 from urllib.parse import urlparse
 from fastapi_cache import FastAPICache
@@ -44,34 +44,38 @@ async def proxy_taleon(path: str, request: Request):
         logger.info(f"Proxy request: {full_url} with params: {query_params}")
         
         # Faz a requisição com timeout
-        response = requests.get(
-            full_url,
-            params=query_params,
-            timeout=TIMEOUT,
-            headers={
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-            }
-        )
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                full_url,
+                params=query_params,
+                timeout=TIMEOUT,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+                }
+            ) as response:
+                # Log do status da resposta
+                logger.info(f"Proxy response status: {response.status}")
+                
+                # Verifica o status da resposta
+                if response.status != 200:
+                    raise HTTPException(status_code=response.status, detail="Erro ao acessar o servidor Taleon")
+                
+                # Obtém o conteúdo HTML
+                html_content = await response.text()
+                logger.info(f"Proxy response content length: {len(html_content)}")
+                
+                # Retorna o conteúdo HTML
+                return HTMLResponse(
+                    content=html_content,
+                    headers={
+                        "Content-Type": "text/html; charset=utf-8",
+                        "Cache-Control": "public, max-age=300"
+                    }
+                )
         
-        # Log do status da resposta
-        logger.info(f"Proxy response status: {response.status_code}")
-        
-        # Verifica o status da resposta
-        if response.status_code != 200:
-            raise HTTPException(status_code=response.status_code, detail="Erro ao acessar o servidor Taleon")
-        
-        # Retorna o conteúdo HTML
-        return HTMLResponse(
-            content=response.text,
-            headers={
-                "Content-Type": "text/html; charset=utf-8",
-                "Cache-Control": "public, max-age=300"
-            }
-        )
-        
-    except requests.Timeout:
-        logger.error("Timeout ao acessar o servidor Taleon")
-        raise HTTPException(status_code=504, detail="Timeout ao acessar o servidor Taleon")
-    except requests.RequestException as e:
+    except aiohttp.ClientError as e:
         logger.error(f"Erro ao acessar o servidor Taleon: {str(e)}")
-        raise HTTPException(status_code=500, detail="Erro ao acessar o servidor Taleon") 
+        raise HTTPException(status_code=500, detail="Erro ao acessar o servidor Taleon")
+    except Exception as e:
+        logger.error(f"Erro inesperado: {str(e)}")
+        raise HTTPException(status_code=500, detail="Erro interno do servidor") 
