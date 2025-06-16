@@ -74,23 +74,34 @@ async def scrape_character_data(character_name: str, db: Session) -> bool:
         # Atualiza o personagem no banco de dados
         character = db.query(Character).filter(Character.name == character_name).first()
         if character:
-            character.level = int(character_data.get('level', 0))
-            character.vocation = character_data.get('vocation', '')
-            character.world = character_data.get('world', '')
-            
-            # Cria um novo registro de histórico
-            history = CharacterHistory(
-                character_id=character.id,
-                level=int(character_data.get('level', 0)),
-                experience=float(character_data.get('experience', 0)),
-                deaths=int(character_data.get('deaths', 0)),
-                timestamp=datetime.utcnow()
-            )
-            db.add(history)
-            
-            db.commit()
-            logger.info(f"Character {character_name} updated successfully")
-            return True
+            try:
+                # Atualiza os dados básicos do personagem
+                character.level = int(character_data.get('level', 0))
+                character.vocation = character_data.get('vocation', '')
+                character.world = character_data.get('world', '')
+                
+                # Cria um novo registro de histórico
+                try:
+                    history = CharacterHistory(
+                        character_id=character.id,
+                        level=int(character_data.get('level', 0)),
+                        experience=float(character_data.get('experience', 0)),
+                        deaths=int(character_data.get('deaths', 0)),
+                        timestamp=datetime.utcnow()
+                    )
+                    db.add(history)
+                    logger.info(f"Registro de histórico criado para {character_name}")
+                except Exception as e:
+                    logger.error(f"Erro ao criar registro de histórico: {str(e)}")
+                    raise
+                
+                db.commit()
+                logger.info(f"Character {character_name} updated successfully")
+                return True
+            except Exception as e:
+                logger.error(f"Erro ao atualizar personagem {character_name}: {str(e)}")
+                db.rollback()
+                return False
         else:
             logger.error(f"Character {character_name} not found in database")
             return False
