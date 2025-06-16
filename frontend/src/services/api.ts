@@ -8,7 +8,7 @@ console.log('API URL:', baseURL); // Debug
 export const api = axios.create({
   baseURL,
   headers: {
-    'Content-Type': 'application/json',
+    'Content-Type': 'application/json', // Adiciona o header de tipo de conteúdo
     'Accept': 'application/json',
   },
   timeout: 10000, // Aumenta o timeout para 10 segundos
