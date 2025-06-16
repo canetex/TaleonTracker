@@ -104,7 +104,8 @@ async def scrape_character_data(character_name: str, db: Session) -> bool:
                 level_text = character_data.get('level', '0')
                 # Remove caracteres não numéricos exceto ponto
                 level_text = re.sub(r'[^\d.]', '', level_text)
-                character.level = int(float(level_text))
+                level = int(float(level_text))
+                character.level = level
                 character.vocation = character_data.get('vocation', '')
                 character.world = character_data.get('residence', '')  # Usando residence como world
                 
@@ -132,7 +133,7 @@ async def scrape_character_data(character_name: str, db: Session) -> bool:
                 try:
                     history = CharacterHistory(
                         character_id=character.id,
-                        level=int(character_data.get('level', 0)),
+                        level=level,  # Usando o mesmo nível já processado
                         experience=experience,
                         deaths=deaths,
                         timestamp=datetime.utcnow()
