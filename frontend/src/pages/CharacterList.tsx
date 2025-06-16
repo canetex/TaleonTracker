@@ -135,47 +135,55 @@ const CharacterList: React.FC = () => {
           </Button>
         </Box>
       ) : (
-        <Grid container spacing={3}>
-          {characters.map((character) => (
-            <Grid item xs={12} sm={6} md={4} key={character.id}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    {character.name}
-                  </Typography>
-                  <Typography color="textSecondary">
-                    Nível: {character.history[0]?.level || 'N/A'}
-                  </Typography>
-                  <Typography color="textSecondary">
-                    Experiência: {character.history[0]?.experience.toLocaleString() || 'N/A'}
-                  </Typography>
-                  <Typography color="textSecondary">
-                    Mortes: {character.history[0]?.deaths || 0}
-                  </Typography>
-                </CardContent>
-                <CardActions>
-                  <Button
-                    size="small"
-                    color="primary"
-                    onClick={() => navigate(`/characters/${character.id}`)}
-                  >
-                    Detalhes
-                  </Button>
-                  <Button
-                    size="small"
-                    color="secondary"
-                    startIcon={<RefreshIcon />}
-                    onClick={() => handleUpdateCharacter(character.id)}
-                    disabled={updatingId === character.id}
-                  >
-                    {updatingId === character.id ? 'Atualizando...' : 'Atualizar'}
-                  </Button>
-                </CardActions>
-              </Card>
+        <Box sx={{ mt: 4 }}>
+          <Typography variant="h6" gutterBottom>
+            Lista de Personagens
+          </Typography>
+          {loading ? (
+            <CircularProgress />
+          ) : (
+            <Grid container spacing={2}>
+              {characters.map((character) => (
+                <Grid item xs={12} sm={6} md={4} key={character.id}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6">{character.name}</Typography>
+                      <Typography color="textSecondary">
+                        Nível: {character.level}
+                      </Typography>
+                      <Typography color="textSecondary">
+                        Vocação: {character.vocation}
+                      </Typography>
+                      <Typography color="textSecondary">
+                        Mundo: {character.world}
+                      </Typography>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={() => handleUpdateCharacter(character.id)}
+                        disabled={updatingId === character.id}
+                        sx={{ mt: 2 }}
+                      >
+                        {updatingId === character.id ? "Atualizando..." : "Atualizar"}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
             </Grid>
-          ))}
-        </Grid>
+          )}
+        </Box>
       )}
+
+      {/* Div temporária para debug */}
+      <Box sx={{ mt: 4, p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+        <Typography variant="h6" gutterBottom>
+          Debug - Retorno da API
+        </Typography>
+        <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+          {JSON.stringify(characters, null, 2)}
+        </pre>
+      </Box>
 
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
         <DialogTitle>Adicionar Novo Personagem</DialogTitle>
