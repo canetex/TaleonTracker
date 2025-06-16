@@ -20,8 +20,8 @@ class CharacterBase(BaseModel):
     vocation: str
     world: str
 
-class CharacterCreate(CharacterBase):
-    pass
+class CharacterCreate(BaseModel):
+    name: str
 
 class CharacterResponse(CharacterBase):
     id: int
