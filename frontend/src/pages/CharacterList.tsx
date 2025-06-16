@@ -14,11 +14,14 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  Container,
+  Alert,
 } from '@mui/material';
 import { Add as AddIcon, Refresh as RefreshIcon } from '@mui/icons-material';
 
 import { api, updateCharacterData } from '../services/api';
 import { Character } from '../types';
+import { formatNumber } from '../utils/format';
 
 const CharacterList: React.FC = () => {
   const navigate = useNavigate();
@@ -103,111 +106,74 @@ const CharacterList: React.FC = () => {
   }
 
   return (
-    <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">Personagens</Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<AddIcon />}
-          onClick={() => setOpenDialog(true)}
-        >
-          Novo Personagem
-        </Button>
+    <Container>
+      <Typography variant="h4" component="h1" gutterBottom>
+        Personagens
+      </Typography>
+
+      <Box mb={3}>
+        <AddCharacterForm onAdd={handleAddCharacter} />
       </Box>
 
       {error && (
-        <Typography color="error" mb={2}>
+        <Alert severity="error" sx={{ mb: 2 }}>
           {error}
-        </Typography>
+        </Alert>
       )}
 
-      {!error && characters.length === 0 ? (
-        <Box 
-          display="flex" 
-          flexDirection="column" 
-          alignItems="center" 
-          justifyContent="center" 
-          minHeight="40vh"
-          textAlign="center"
-        >
-          <Typography variant="h6" color="textSecondary" gutterBottom>
-            Nenhum personagem cadastrado
-          </Typography>
-          <Typography color="textSecondary" mb={3}>
-            Clique no botão "Novo Personagem" para começar a rastrear seus personagens
-          </Typography>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<AddIcon />}
-            onClick={() => setOpenDialog(true)}
-          >
-            Adicionar Primeiro Personagem
-          </Button>
-        </Box>
-      ) : (
-        <Box sx={{ mt: 4 }}>
-          <Typography variant="h6" gutterBottom>
-            Lista de Personagens
-          </Typography>
-          {loading ? (
-            <CircularProgress />
-          ) : (
-            <Grid container spacing={2}>
-              {characters.map((character) => (
-                <Grid item xs={12} sm={6} md={4} key={character.id}>
-                  <Card>
-                    <CardContent>
-                      <Typography variant="h6">{character.name}</Typography>
-                      <Typography color="textSecondary">
-                        Nível: {character.level}
-                      </Typography>
-                      <Typography color="textSecondary">
-                        Vocação: {character.vocation}
-                      </Typography>
-                      <Typography color="textSecondary">
-                        Mundo: {character.world}
-                      </Typography>
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={() => handleUpdateCharacter(character.id)}
-                        disabled={updatingId === character.id}
-                        sx={{ mt: 2 }}
-                      >
-                        {updatingId === character.id ? "Atualizando..." : "Atualizar"}
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
-          )}
-        </Box>
-      )}
-
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
-        <DialogTitle>Adicionar Novo Personagem</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Nome do Personagem"
-            type="text"
-            fullWidth
-            value={newCharacterName}
-            onChange={(e) => setNewCharacterName(e.target.value)}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button onClick={handleAddCharacter} color="primary">
-            Adicionar
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+      <Grid container spacing={2}>
+        {characters.map((character) => (
+          <Grid item xs={12} sm={6} md={4} key={character.id}>
+            <Card>
+              <CardContent>
+                <Box display="flex" alignItems="center" mb={1}>
+                  {character.outfit && (
+                    <Box mr={1}>
+                      <img 
+                        src={character.outfit} 
+                        alt={`${character.name} outfit`}
+                        style={{ width: 32, height: 32 }}
+                      />
+                    </Box>
+                  )}
+                  <Typography variant="h6" component="div">
+                    {character.name}
+                  </Typography>
+                </Box>
+                <Typography color="textSecondary" gutterBottom>
+                  Nível: {formatNumber(character.level)}
+                </Typography>
+                <Typography color="textSecondary" gutterBottom>
+                  Vocação: {character.vocation}
+                </Typography>
+                <Typography color="textSecondary" gutterBottom>
+                  Cidade: {character.world}
+                </Typography>
+                <Typography color="textSecondary" gutterBottom>
+                  Experiência: {formatNumber(character.experience)}
+                </Typography>
+                <Typography color="textSecondary" gutterBottom>
+                  Mortes: {character.deaths}
+                </Typography>
+                <Typography variant="body2" color="textSecondary">
+                  Última atualização: {new Date(character.last_updated).toLocaleString()}
+                </Typography>
+              </CardContent>
+              <CardActions>
+                <Button
+                  size="small"
+                  color="primary"
+                  onClick={() => handleUpdateCharacter(character.id)}
+                  disabled={loading}
+                >
+                  {loading ? "Atualizando..." : "Atualizar"}
+                </Button>
+              </CardActions>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+    </Container>
   );
 };
 

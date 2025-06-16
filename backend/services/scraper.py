@@ -89,7 +89,15 @@ async def scrape_character_data(character_name: str, db: Session) -> bool:
             cols = row.find_all('td')
             if len(cols) >= 2:
                 key = cols[0].text.strip().lower().replace(':', '')
-                value = cols[1].text.strip()
+                # Se for a linha do nome, pega o nome formatado e o outfit
+                if key == 'name':
+                    outfit_img = cols[1].find('img', {'class': 'outfitImgTable'})
+                    if outfit_img:
+                        character_data['outfit'] = outfit_img.get('src', '')
+                    # Pega o nome formatado (sem o outfit)
+                    value = cols[1].get_text(strip=True)
+                else:
+                    value = cols[1].text.strip()
                 character_data[key] = value
                 logger.info(f"Encontrado: {key} = {value}")
         
@@ -109,6 +117,8 @@ async def scrape_character_data(character_name: str, db: Session) -> bool:
                 character.level = level
                 character.vocation = character_data.get('vocation', '')
                 character.world = character_data.get('residence', '')  # Usando residence como world
+                character.outfit = character_data.get('outfit', '')  # Salva o outfit
+                character.name = character_data.get('name', character_name)  # Atualiza o nome formatado
                 
                 # Extrai experiência e mortes
                 experience = 0

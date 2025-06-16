@@ -8,6 +8,13 @@ class Character(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True)
+    level = Column(Integer)
+    vocation = Column(String)
+    world = Column(String)
+    outfit = Column(String)  # URL da imagem do outfit
+    experience = Column(Integer)
+    deaths = Column(Integer)
+    last_updated = Column(DateTime, default=datetime.utcnow)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
