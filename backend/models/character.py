@@ -9,9 +9,10 @@ class Character(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True)
-    level = Column(Integer)
-    vocation = Column(String)
-    world = Column(String)
-    last_updated = Column(DateTime, default=datetime.utcnow)
+    level = Column(Integer, default=0)
+    vocation = Column(String, default='')
+    world = Column(String, default='')
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     history = relationship("CharacterHistory", back_populates="character", cascade="all, delete-orphan")

@@ -1,6 +1,9 @@
 export interface Character {
   id: number;
   name: string;
+  level: number;
+  vocation: string;
+  world: string;
   created_at: string;
   updated_at: string;
   history: CharacterHistory[];

@@ -2,33 +2,41 @@ import requests
 from bs4 import BeautifulSoup
 from sqlalchemy.orm import Session
 from models.character import Character
+from models.character_history import CharacterHistory
 from datetime import datetime
 
 def scrape_character_data(character_name: str, db: Session) -> bool:
     try:
-        # URL do site do Taleon
-        url = f"https://taleon.com.br/character/{character_name}"
+        # URL da API do Taleon
+        url = f"http://192.168.1.178:8001/characters/{character_name}"
         response = requests.get(url)
         response.raise_for_status()
         
-        soup = BeautifulSoup(response.text, 'html.parser')
-        
-        # Extrair dados do personagem
-        level = int(soup.find('div', {'class': 'level'}).text.strip())
-        vocation = soup.find('div', {'class': 'vocation'}).text.strip()
-        world = soup.find('div', {'class': 'world'}).text.strip()
+        data = response.json()
         
         # Atualizar ou criar o personagem no banco
         character = db.query(Character).filter(Character.name == character_name).first()
         if not character:
-            character = Character(name=character_name)
+            character = Character(
+                name=character_name,
+                level=data.get('level', 0),
+                vocation=data.get('vocation', ''),
+                world=data.get('world', '')
+            )
+            db.add(character)
+            db.commit()
+            db.refresh(character)
         
-        character.level = level
-        character.vocation = vocation
-        character.world = world
-        character.last_updated = datetime.utcnow()
+        # Criar histórico
+        history = CharacterHistory(
+            character_id=character.id,
+            level=data.get('level', 0),
+            experience=data.get('experience', 0),
+            deaths=data.get('deaths', 0),
+            timestamp=datetime.utcnow()
+        )
         
-        db.add(character)
+        db.add(history)
         db.commit()
         return True
         
