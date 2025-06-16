@@ -6,6 +6,9 @@ if ! command -v node &> /dev/null; then
     apt-get install -y nodejs
 fi
 
+# Instalar serve globalmente
+npm install -g serve
+
 # Criar diretório de instalação
 mkdir -p /opt/taleontracker/frontend
 
@@ -18,7 +21,7 @@ npm install
 npm run build
 
 # Copiar arquivo de serviço
-cp frontend/taleontracker-frontend.service /etc/systemd/system/
+cp /root/TaleonTracker/frontend/taleontracker-frontend.service /etc/systemd/system/
 
 # Recarregar systemd
 systemctl daemon-reload
