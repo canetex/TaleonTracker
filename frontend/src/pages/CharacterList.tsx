@@ -56,7 +56,8 @@ const CharacterList: React.FC = () => {
       fetchCharacters();
     } catch (err: any) {
       console.error('Erro detalhado:', err.response?.data || err.message);
-      setError('Erro ao adicionar personagem: ' + (err.response?.data?.detail || err.message));
+      const errorMessage = err.response?.data?.detail || err.message || 'Erro desconhecido';
+      setError(`Erro ao adicionar personagem: ${errorMessage}`);
     }
   };
 
