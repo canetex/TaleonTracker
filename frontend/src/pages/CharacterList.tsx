@@ -28,6 +28,7 @@ const CharacterList: React.FC = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [newCharacterName, setNewCharacterName] = useState('');
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [lastUpdateResponse, setLastUpdateResponse] = useState<any>(null);
 
   const fetchCharacters = async () => {
     try {
@@ -72,11 +73,14 @@ const CharacterList: React.FC = () => {
   const handleUpdateCharacter = async (id: number) => {
     try {
       setUpdatingId(id);
-      await api.post(`/api/characters/${id}/update`);
+      const response = await api.post(`/api/characters/${id}/update`);
+      const data = await response.data;
+      setLastUpdateResponse(data);
       await fetchCharacters();
     } catch (err) {
       setError('Erro ao atualizar personagem');
       console.error(err);
+      setLastUpdateResponse({ error: err });
     } finally {
       setUpdatingId(null);
     }
@@ -179,6 +183,15 @@ const CharacterList: React.FC = () => {
       <Box sx={{ mt: 4, p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
         <Typography variant="h6" gutterBottom>
           Debug - Retorno da API
+        </Typography>
+        <Typography variant="subtitle1" gutterBottom>
+          Última atualização:
+        </Typography>
+        <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+          {JSON.stringify(lastUpdateResponse, null, 2)}
+        </pre>
+        <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
+          Lista de personagens:
         </Typography>
         <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
           {JSON.stringify(characters, null, 2)}
