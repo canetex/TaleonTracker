@@ -1,24 +1,41 @@
 import axios, { AxiosError, AxiosResponse } from 'axios';
 
+// Interface para o tipo de personagem
+interface Character {
+  id: number;
+  name: string;
+  race: string;
+  class: string;
+  level: number;
+  // Adicione outros campos conforme necessário
+}
+
+// Interface para resposta da API
+interface ApiResponse<T> {
+  data: T;
+  status: number;
+  message?: string;
+}
+
 // Usa a URL base do ambiente ou fallback para localhost
-const baseURL = process.env.REACT_APP_API_URL || 'http://192.168.1.178:8000';
+const baseURL = (window as any).env?.REACT_APP_API_URL || 'http://localhost:8000';
 
 console.log('API URL:', baseURL); // Debug
 
 export const api = axios.create({
   baseURL,
   headers: {
-    'Content-Type': 'application/json', // Adiciona o header de tipo de conteúdo
+    'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
-  timeout: 10000, // Aumenta o timeout para 10 segundos
-  withCredentials: false, // Desabilita o envio de cookies
+  timeout: 10000,
+  withCredentials: false,
 });
 
 // Interceptor para tratamento de erros
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
+  (response: AxiosResponse) => response,
+  (error: AxiosError) => {
     if (error.response) {
       // O servidor respondeu com um status de erro
       console.error('Erro na resposta:', error.response.data);
@@ -38,49 +55,48 @@ api.interceptors.response.use(
   }
 );
 
-export const getCharacters = async () => {
+export const getCharacters = async (): Promise<Character[]> => {
   try {
-    const response: AxiosResponse = await api.get('/api/characters');
-    return response.data;
-  } catch (error) {
+    const response: AxiosResponse<ApiResponse<Character[]>> = await api.get('/api/characters');
+    return response.data.data;
+  } catch (error: unknown) {
     if (error instanceof AxiosError) {
-      console.error('Erro na resposta:', error.response?.data);
+      console.error('Erro ao buscar personagens:', error.response?.data);
     }
     throw error;
   }
 };
 
-export const addCharacter = async (characterData: any) => {
+export const addCharacter = async (characterData: Omit<Character, 'id'>): Promise<Character> => {
   try {
-    const response: AxiosResponse = await api.post('/api/characters', characterData);
-    return response.data;
-  } catch (error) {
+    const response: AxiosResponse<ApiResponse<Character>> = await api.post('/api/characters', characterData);
+    return response.data.data;
+  } catch (error: unknown) {
     if (error instanceof AxiosError) {
-      console.error('Erro na resposta:', error.response?.data);
+      console.error('Erro ao adicionar personagem:', error.response?.data);
     }
     throw error;
   }
 };
 
-export const updateCharacter = async (id: number, characterData: any) => {
+export const updateCharacter = async (id: number, characterData: Partial<Character>): Promise<Character> => {
   try {
-    const response: AxiosResponse = await api.put('/api/characters/${id}', characterData);
-    return response.data;
-  } catch (error) {
+    const response: AxiosResponse<ApiResponse<Character>> = await api.put(`/api/characters/${id}`, characterData);
+    return response.data.data;
+  } catch (error: unknown) {
     if (error instanceof AxiosError) {
-      console.error('Erro na resposta:', error.response?.data);
+      console.error('Erro ao atualizar personagem:', error.response?.data);
     }
     throw error;
   }
 };
 
-export const deleteCharacter = async (id: number) => {
+export const deleteCharacter = async (id: number): Promise<void> => {
   try {
-    const response: AxiosResponse = await api.delete('/api/characters/${id}');
-    return response.data;
-  } catch (error) {
+    await api.delete(`/api/characters/${id}`);
+  } catch (error: unknown) {
     if (error instanceof AxiosError) {
-      console.error('Erro na resposta:', error.response?.data);
+      console.error('Erro ao deletar personagem:', error.response?.data);
     }
     throw error;
   }
