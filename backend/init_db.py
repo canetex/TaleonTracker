@@ -34,6 +34,25 @@ def init_db():
             if 'last_updated' not in existing_columns:
                 conn.execute(text("ALTER TABLE characters ADD COLUMN last_updated TIMESTAMP"))
 
+            # Verificar se a tabela character_history existe
+            result = conn.execute(text("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'character_history')"))
+            history_exists = result.scalar()
+
+            if history_exists:
+                # Verificar se a coluna deaths existe
+                result = conn.execute(text("""
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'character_history'
+                """))
+                history_columns = [row[0] for row in result]
+
+                # Adicionar coluna deaths se não existir
+                if 'deaths' not in history_columns:
+                    conn.execute(text("ALTER TABLE character_history ADD COLUMN deaths INTEGER DEFAULT 0"))
+                    # Atualizar registros existentes
+                    conn.execute(text("UPDATE character_history SET deaths = 0 WHERE deaths IS NULL"))
+
             conn.commit()
 
     # Criar todas as tabelas
