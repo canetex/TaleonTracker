@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy.orm import relationship
 from database import Base
 from datetime import datetime
 
@@ -11,3 +12,5 @@ class Character(Base):
     vocation = Column(String)
     world = Column(String)
     last_updated = Column(DateTime, default=datetime.utcnow)
+    
+    history = relationship("CharacterHistory", back_populates="character")

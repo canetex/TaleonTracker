@@ -1,6 +1,12 @@
+import sys
+import os
+
+# Adiciona o diretório atual ao PYTHONPATH
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from database import engine, Base
-from models.character import Character
-from models.character_history import CharacterHistory
+from backend.models.character import Character
+from backend.models.character_history import CharacterHistory
 
 def init_db():
     Base.metadata.create_all(bind=engine)
