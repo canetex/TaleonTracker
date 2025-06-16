@@ -33,7 +33,9 @@ async def get_character_html(character_name: str) -> str:
     async with aiohttp.ClientSession() as session:
         async with session.get(url, headers=headers, timeout=10) as response:
             response.raise_for_status()
-            return await response.text()
+            html_content = await response.text()
+            logger.info(f"HTML recebido para {character_name} (tamanho: {len(html_content)})")
+            return html_content
 
 async def scrape_character_data(character_name: str, db: Session) -> bool:
     try:
@@ -44,11 +46,18 @@ async def scrape_character_data(character_name: str, db: Session) -> bool:
         
         soup = BeautifulSoup(html_content, 'html.parser')
         
+        # Log do HTML para debug
+        logger.info(f"HTML parseado para {character_name}")
+        
         # Encontra a tabela com as informações do personagem
         character_table = soup.find('table', {'class': 'table'})
         if not character_table:
-            logger.error(f"Tabela de personagem não encontrada para: {character_name}")
-            return False
+            # Tenta encontrar a tabela sem especificar a classe
+            character_table = soup.find('table')
+            if not character_table:
+                logger.error(f"Nenhuma tabela encontrada para: {character_name}")
+                logger.error(f"HTML recebido: {html_content[:500]}...")  # Log dos primeiros 500 caracteres
+                return False
         
         # Extrai as informações
         rows = character_table.find_all('tr')
@@ -60,6 +69,7 @@ async def scrape_character_data(character_name: str, db: Session) -> bool:
                 key = cols[0].text.strip().lower()
                 value = cols[1].text.strip()
                 character_data[key] = value
+                logger.info(f"Encontrado: {key} = {value}")
         
         # Atualiza o personagem no banco de dados
         character = db.query(Character).filter(Character.name == character_name).first()
