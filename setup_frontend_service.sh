@@ -19,6 +19,9 @@ cp -r frontend/* /opt/taleontracker/frontend/
 cd /opt/taleontracker/frontend
 npm install
 
+# Configurar variáveis de ambiente
+echo "REACT_APP_API_URL=http://localhost:8000" > .env
+
 # Configurar PM2 para gerenciar o frontend
 pm2 start npm --name "taleontracker-frontend" -- start
 
