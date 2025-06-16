@@ -1,4 +1,4 @@
-import requests
+import aiohttp
 from bs4 import BeautifulSoup
 from sqlalchemy.orm import Session
 from models.character import Character
@@ -30,9 +30,10 @@ async def get_character_html(character_name: str) -> str:
         'Upgrade-Insecure-Requests': '1'
     }
     
-    response = requests.get(url, headers=headers, timeout=10)
-    response.raise_for_status()
-    return response.text
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=headers, timeout=10) as response:
+            response.raise_for_status()
+            return await response.text()
 
 async def scrape_character_data(character_name: str, db: Session) -> bool:
     try:
