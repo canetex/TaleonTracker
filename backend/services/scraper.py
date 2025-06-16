@@ -8,32 +8,39 @@ from urllib.parse import quote
 import re
 import logging
 import time
+from fastapi_cache import FastAPICache
+from fastapi_cache.decorator import cache
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+@cache(expire=300)  # Cache por 5 minutos
+async def get_character_html(character_name: str) -> str:
+    """Obtém o HTML do perfil do personagem com cache"""
+    encoded_name = quote(character_name)
+    url = f"http://localhost:8000/api/proxy/taleon/characterprofile.php?name={encoded_name}"
+    
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1'
+    }
+    
+    response = requests.get(url, headers=headers, timeout=10)
+    response.raise_for_status()
+    return response.text
+
 def scrape_character_data(character_name: str, db: Session) -> bool:
     try:
-        # Codifica o nome do personagem para URL
-        encoded_name = quote(character_name)
-        
-        # Usa o proxy interno
-        url = f"http://localhost:8000/api/proxy/taleon/characterprofile.php?name={encoded_name}"
-        
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1'
-        }
-        
         logger.info(f"Scraping character: {character_name}")
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
         
-        soup = BeautifulSoup(response.text, 'html.parser')
+        # Obtém o HTML com cache
+        html_content = get_character_html(character_name)
+        
+        soup = BeautifulSoup(html_content, 'html.parser')
         
         # Encontra a tabela com as informações do personagem
         character_table = soup.find('table', {'class': 'table'})
