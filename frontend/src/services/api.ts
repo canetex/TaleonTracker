@@ -1,12 +1,13 @@
 import axios from 'axios';
 
-const baseURL = process.env.REACT_APP_API_URL || 'http://10.0.3.100:8001/api';
+const baseURL = process.env.REACT_APP_API_URL || 'http://192.168.1.178:8001/api';
 
 export const api = axios.create({
   baseURL,
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 5000, // Adiciona um timeout de 5 segundos
 });
 
 // Interceptor para tratamento de erros
