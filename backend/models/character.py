@@ -1,7 +1,8 @@
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from database import Base
 from datetime import datetime
+from .character_history import CharacterHistory
 
 class Character(Base):
     __tablename__ = "characters"
@@ -13,4 +14,4 @@ class Character(Base):
     world = Column(String)
     last_updated = Column(DateTime, default=datetime.utcnow)
     
-    history = relationship("CharacterHistory", back_populates="character")
+    history = relationship("CharacterHistory", back_populates="character", cascade="all, delete-orphan")
