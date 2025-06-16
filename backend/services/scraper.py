@@ -7,32 +7,84 @@ from datetime import datetime
 
 def scrape_character_data(character_name: str, db: Session) -> bool:
     try:
-        # URL da API do Taleon
-        url = f"http://192.168.1.178:8001/characters/{character_name}"
-        response = requests.get(url)
+        # URL do site do Taleon
+        url = f"https://san.taleon.online/characterprofile.php?name={character_name}"
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        
+        response = requests.get(url, headers=headers)
         response.raise_for_status()
         
-        data = response.json()
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Encontrar a tabela de informações do personagem
+        character_table = soup.find('table', {'class': 'Table3'})
+        if not character_table:
+            print(f"Não foi possível encontrar informações para o personagem {character_name}")
+            return False
+            
+        # Extrair informações
+        rows = character_table.find_all('tr')
+        character_data = {}
+        
+        for row in rows:
+            cols = row.find_all('td')
+            if len(cols) >= 2:
+                key = cols[0].text.strip().lower()
+                value = cols[1].text.strip()
+                character_data[key] = value
+        
+        # Converter dados
+        level = int(character_data.get('level', '0').replace(',', ''))
+        vocation = character_data.get('vocation', '')
+        world = 'Taleon'  # Mundo fixo para o Taleon
+        
+        # Encontrar a tabela de experiência
+        exp_table = soup.find('table', {'class': 'Table4'})
+        experience = 0
+        if exp_table:
+            exp_rows = exp_table.find_all('tr')
+            for row in exp_rows:
+                cols = row.find_all('td')
+                if len(cols) >= 2 and 'today' in cols[0].text.lower():
+                    exp_text = cols[1].text.strip().replace(',', '')
+                    try:
+                        experience = int(exp_text)
+                    except ValueError:
+                        experience = 0
+                    break
+        
+        # Encontrar a tabela de mortes
+        deaths_table = soup.find('table', {'class': 'Table5'})
+        deaths = 0
+        if deaths_table:
+            deaths = len(deaths_table.find_all('tr')) - 1  # -1 para excluir o cabeçalho
         
         # Atualizar ou criar o personagem no banco
         character = db.query(Character).filter(Character.name == character_name).first()
         if not character:
             character = Character(
                 name=character_name,
-                level=data.get('level', 0),
-                vocation=data.get('vocation', ''),
-                world=data.get('world', '')
+                level=level,
+                vocation=vocation,
+                world=world
             )
             db.add(character)
             db.commit()
             db.refresh(character)
+        else:
+            character.level = level
+            character.vocation = vocation
+            character.world = world
+            db.commit()
         
         # Criar histórico
         history = CharacterHistory(
             character_id=character.id,
-            level=data.get('level', 0),
-            experience=data.get('experience', 0),
-            deaths=data.get('deaths', 0),
+            level=level,
+            experience=experience,
+            deaths=deaths,
             timestamp=datetime.utcnow()
         )
         
