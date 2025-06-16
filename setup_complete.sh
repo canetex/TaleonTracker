@@ -28,6 +28,7 @@ setup_firewall() {
     ufw allow 80/tcp    # HTTP
     ufw allow 443/tcp   # HTTPS
     ufw allow 8000/tcp  # Backend API
+    ufw allow 3000/tcp  # Frontend Development Server
     
     # Habilitar firewall
     ufw --force enable
@@ -97,6 +98,7 @@ IP_ADDRESS=$(hostname -I | awk '{print $1}')
 echo -e "${GREEN}Configuração completa!${NC}"
 echo -e "${GREEN}O TaleonTracker está disponível em:${NC}"
 echo -e "Frontend: http://$IP_ADDRESS"
+echo -e "Frontend Dev Server: http://$IP_ADDRESS:3000"
 echo -e "Backend API: http://$IP_ADDRESS:8000"
 echo -e "${YELLOW}Para verificar o status dos serviços:${NC}"
 echo "sudo systemctl status postgresql"
