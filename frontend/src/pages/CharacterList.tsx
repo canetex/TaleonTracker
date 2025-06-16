@@ -27,6 +27,7 @@ const CharacterList: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
   const [newCharacterName, setNewCharacterName] = useState('');
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
 
   const fetchCharacters = async () => {
     try {
@@ -53,7 +54,7 @@ const CharacterList: React.FC = () => {
       console.log('Resposta:', response.data);
       setOpenDialog(false);
       setNewCharacterName('');
-      fetchCharacters();
+      await fetchCharacters();
     } catch (err: any) {
       console.error('Erro detalhado:', err);
       let errorMessage = 'Erro ao adicionar personagem';
@@ -70,14 +71,14 @@ const CharacterList: React.FC = () => {
 
   const handleUpdateCharacter = async (id: number) => {
     try {
-      setLoading(true);
+      setUpdatingId(id);
       await api.post(`/api/characters/${id}/update`);
       await fetchCharacters();
-      setLoading(false);
     } catch (err) {
       setError('Erro ao atualizar personagem');
       console.error(err);
-      setLoading(false);
+    } finally {
+      setUpdatingId(null);
     }
   };
 
@@ -165,8 +166,9 @@ const CharacterList: React.FC = () => {
                     color="secondary"
                     startIcon={<RefreshIcon />}
                     onClick={() => handleUpdateCharacter(character.id)}
+                    disabled={updatingId === character.id}
                   >
-                    Atualizar
+                    {updatingId === character.id ? 'Atualizando...' : 'Atualizar'}
                   </Button>
                 </CardActions>
               </Card>
