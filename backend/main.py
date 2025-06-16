@@ -1,21 +1,28 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime
 import uvicorn
 import os
 from dotenv import load_dotenv
-
-from database import engine, Base
 from routers import characters, auth, proxy
 from services.scraper import scrape_character_data
-from services.scheduler import schedule_daily_scrape
+from services.scheduler import schedule_daily_scrape, setup_scheduler
+import logging
 
 # Carrega variáveis de ambiente
 load_dotenv()
 
 # Cria as tabelas do banco de dados
+from database import engine, Base
 Base.metadata.create_all(bind=engine)
+
+# Configuração de logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="TaleonTracker API",
@@ -26,12 +33,11 @@ app = FastAPI(
 # Configuração CORS mais permissiva
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Permite todas as origens
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"],
-    max_age=3600,
+    allow_methods=["*"],  # Permite todos os métodos
+    allow_headers=["*"],  # Permite todos os headers
+    expose_headers=["*"]  # Expõe todos os headers
 )
 
 # Inclui os routers
@@ -45,6 +51,9 @@ scheduler.start()
 
 # Agenda o scraping diário
 schedule_daily_scrape(scheduler)
+
+# Configurar o scheduler
+setup_scheduler()
 
 @app.get("/")
 async def root():

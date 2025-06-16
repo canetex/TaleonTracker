@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response
-import requests
+import httpx
 import logging
 from urllib.parse import urljoin
 
@@ -13,54 +13,47 @@ BASE_URL = "https://san.taleon.online"
 async def proxy_taleon(path: str, request: Request):
     try:
         # Constrói a URL completa
-        url = urljoin(BASE_URL, path)
+        full_url = urljoin(BASE_URL, path)
+        logger.info(f"Proxy request to: {full_url}")
+
+        # Obtém os parâmetros da query
+        query_params = dict(request.query_params)
         
-        # Obtém os parâmetros de query da requisição original
-        query_params = str(request.query_params)
-        if query_params:
-            url = f"{url}?{query_params}"
-        
-        logger.info(f"Proxy: Requisição para {url}")
-        
+        # Configura os headers
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-            'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Connection': 'keep-alive',
-            'Referer': BASE_URL
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache"
         }
-        
-        # Faz a requisição
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
-        
-        # Prepara os headers da resposta
-        response_headers = {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-            'Access-Control-Allow-Headers': '*',
-            'Access-Control-Expose-Headers': '*',
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0'
-        }
-        
-        # Adiciona os headers originais da resposta
-        for key, value in response.headers.items():
-            if key.lower() not in ['content-encoding', 'content-length', 'transfer-encoding']:
-                response_headers[key] = value
-        
-        logger.info(f"Proxy: Resposta recebida com status {response.status_code}")
-        
-        return Response(
-            content=response.content,
-            media_type=response.headers.get('content-type', 'text/html'),
-            headers=response_headers
-        )
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Erro na requisição proxy: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Erro ao acessar o site do Taleon: {str(e)}")
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                full_url,
+                params=query_params,
+                headers=headers,
+                follow_redirects=True
+            )
+            
+            logger.info(f"Proxy response status: {response.status_code}")
+            
+            # Cria a resposta com os headers apropriados
+            return Response(
+                content=response.content,
+                status_code=response.status_code,
+                headers={
+                    "Content-Type": response.headers.get("content-type", "text/html"),
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+                    "Access-Control-Allow-Headers": "*",
+                    "Cache-Control": "no-cache, no-store, must-revalidate",
+                    "Pragma": "no-cache",
+                    "Expires": "0"
+                }
+            )
     except Exception as e:
-        logger.error(f"Erro inesperado no proxy: {str(e)}")
+        logger.error(f"Erro no proxy: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e)) 
