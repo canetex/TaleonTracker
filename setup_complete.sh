@@ -10,6 +10,10 @@ NC='\033[0m'
 check_command() {
     if ! command -v $1 &> /dev/null; then
         echo -e "${RED}Erro: $1 não está instalado. Por favor, instale-o primeiro.${NC}"
+        echo -e "${YELLOW}Instalando $1...${NC}"
+        apt update
+        apt install -y $1
+        echo -e "${GREEN}$1 instalado com sucesso!${NC}"
         exit 1
     fi
 }
