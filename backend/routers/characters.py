@@ -5,8 +5,10 @@ from database import get_db
 from models.character import Character
 from schemas.character import CharacterCreate, CharacterResponse
 from services.scraper import scrape_character_data
+import logging
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 @router.post("/", response_model=CharacterResponse)
 def create_character(character: CharacterCreate, db: Session = Depends(get_db)):
@@ -32,12 +34,13 @@ def create_character(character: CharacterCreate, db: Session = Depends(get_db)):
             scrape_character_data(character.name, db)
         except Exception as e:
             # Se falhar ao obter os dados, pelo menos o personagem foi criado
-            print(f"Erro ao obter dados do personagem: {str(e)}")
+            logger.error(f"Erro ao obter dados do personagem: {str(e)}")
 
         return db_character
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Erro ao criar personagem: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/", response_model=List[CharacterResponse])
@@ -53,14 +56,22 @@ def get_character(character_id: int, db: Session = Depends(get_db)):
 
 @router.post("/{character_id}/update", response_model=CharacterResponse)
 def update_character(character_id: int, db: Session = Depends(get_db)):
-    character = db.query(Character).filter(Character.id == character_id).first()
-    if not character:
-        raise HTTPException(status_code=404, detail="Personagem não encontrado")
-    
     try:
+        character = db.query(Character).filter(Character.id == character_id).first()
+        if not character:
+            raise HTTPException(status_code=404, detail="Personagem não encontrado")
+        
+        logger.info(f"Atualizando personagem: {character.name}")
+        
         if not scrape_character_data(character.name, db):
+            logger.error(f"Falha ao atualizar dados do personagem {character.name}")
             raise HTTPException(status_code=500, detail="Erro ao atualizar dados do personagem")
+        
         db.refresh(character)
+        logger.info(f"Personagem {character.name} atualizado com sucesso")
         return character
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"Erro ao atualizar personagem: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

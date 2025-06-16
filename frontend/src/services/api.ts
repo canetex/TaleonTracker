@@ -1,6 +1,9 @@
 import axios from 'axios';
 
+// Usa a URL base do ambiente ou fallback para localhost
 const baseURL = process.env.REACT_APP_API_URL || 'http://192.168.1.178:8000';
+
+console.log('API URL:', baseURL); // Debug
 
 export const api = axios.create({
   baseURL,
@@ -21,6 +24,8 @@ api.interceptors.response.use(
       console.error('Erro na resposta:', error.response.data);
       if (error.response.status === 403) {
         console.error('Erro de CORS ou permissão negada');
+      } else if (error.response.status === 500) {
+        console.error('Erro interno do servidor:', error.response.data);
       }
     } else if (error.request) {
       // A requisição foi feita mas não houve resposta
