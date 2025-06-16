@@ -8,6 +8,38 @@ from services.scraper import scrape_character_data
 
 router = APIRouter()
 
+@router.post("/", response_model=CharacterResponse)
+def create_character(character: CharacterCreate, db: Session = Depends(get_db)):
+    try:
+        # Verifica se o personagem já existe
+        existing_character = db.query(Character).filter(Character.name == character.name).first()
+        if existing_character:
+            raise HTTPException(status_code=400, detail="Personagem já existe")
+
+        # Cria o novo personagem
+        db_character = Character(
+            name=character.name,
+            level=0,  # Será atualizado pelo scraper
+            vocation="",  # Será atualizado pelo scraper
+            world=""  # Será atualizado pelo scraper
+        )
+        db.add(db_character)
+        db.commit()
+        db.refresh(db_character)
+
+        # Tenta obter os dados do personagem
+        try:
+            scrape_character_data(character.name, db)
+        except Exception as e:
+            # Se falhar ao obter os dados, pelo menos o personagem foi criado
+            print(f"Erro ao obter dados do personagem: {str(e)}")
+
+        return db_character
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.post("/scrape", response_model=CharacterResponse)
 def scrape_character(character_name: str, db: Session = Depends(get_db)):
     try:
