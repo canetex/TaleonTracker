@@ -10,6 +10,7 @@ import logging
 import time
 from fastapi_cache import FastAPICache
 from fastapi_cache.decorator import cache
+import asyncio
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -33,12 +34,12 @@ async def get_character_html(character_name: str) -> str:
     response.raise_for_status()
     return response.text
 
-def scrape_character_data(character_name: str, db: Session) -> bool:
+async def scrape_character_data(character_name: str, db: Session) -> bool:
     try:
         logger.info(f"Scraping character: {character_name}")
         
         # Obtém o HTML com cache
-        html_content = get_character_html(character_name)
+        html_content = await get_character_html(character_name)
         
         soup = BeautifulSoup(html_content, 'html.parser')
         
@@ -76,7 +77,7 @@ def scrape_character_data(character_name: str, db: Session) -> bool:
         logger.error(f"Error scraping character {character_name}: {str(e)}")
         return False
 
-def update_all_characters():
+async def update_all_characters():
     """
     Atualiza todos os personagens cadastrados.
     """
@@ -86,8 +87,8 @@ def update_all_characters():
         characters = db.query(Character).all()
         for character in characters:
             logger.info(f"Atualizando personagem: {character.name}")
-            scrape_character_data(character.name, db)
+            await scrape_character_data(character.name, db)
             # Adiciona um delay entre as requisições
-            time.sleep(2)
+            await asyncio.sleep(2)
     finally:
         db.close()
