@@ -8,14 +8,41 @@ NC='\033[0m'
 
 # Função para verificar se um comando existe
 check_command() {
-    if ! command -v $1 &> /dev/null; then
-        echo -e "${RED}Erro: $1 não está instalado. Por favor, instale-o primeiro.${NC}"
-        echo -e "${YELLOW}Instalando $1...${NC}"
+    local cmd=$1
+    local package=$2
+    
+    if ! command -v $cmd &> /dev/null; then
+        echo -e "${YELLOW}Instalando $cmd...${NC}"
         apt update
-        apt install -y $1
-        echo -e "${GREEN}$1 instalado com sucesso!${NC}"
-        exit 1
+        
+        # Casos especiais de instalação
+        case $cmd in
+            "pip3")
+                apt install -y python3-pip
+                ;;
+            "node")
+                apt install -y nodejs
+                ;;
+            "npm")
+                apt install -y npm
+                ;;
+            *)
+                if [ -n "$package" ]; then
+                    apt install -y $package
+                else
+                    apt install -y $cmd
+                fi
+                ;;
+        esac
+        
+        if command -v $cmd &> /dev/null; then
+            echo -e "${GREEN}$cmd instalado com sucesso!${NC}"
+        else
+            echo -e "${RED}Falha ao instalar $cmd${NC}"
+            return 1
+        fi
     fi
+    return 0
 }
 
 # Função para configurar o firewall
@@ -71,11 +98,11 @@ verify_services() {
 
 # Verificar dependências necessárias
 echo -e "${YELLOW}Verificando dependências...${NC}"
-check_command git
-check_command python3
-check_command pip3
-check_command node
-check_command npm
+check_command git || exit 1
+check_command python3 || exit 1
+check_command pip3 || exit 1
+check_command node || exit 1
+check_command npm || exit 1
 
 # Atualizar o sistema
 echo -e "${YELLOW}Atualizando o sistema...${NC}"
