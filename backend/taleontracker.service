@@ -1,0 +1,18 @@
+[Unit]
+Description=TaleonTracker API Service
+After=network.target postgresql.service
+
+[Service]
+User=root
+WorkingDirectory=/opt/taleontracker/backend
+Environment="PATH=/opt/taleontracker/venv/bin"
+ExecStart=/opt/taleontracker/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+Restart=always
+Environment=POSTGRES_USER=taleon
+Environment=POSTGRES_PASSWORD=taleon123
+Environment=POSTGRES_DB=taleontracker
+Environment=POSTGRES_HOST=localhost
+Environment=POSTGRES_PORT=5432
+
+[Install]
+WantedBy=multi-user.target
