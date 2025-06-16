@@ -1,0 +1,14 @@
+[Unit]
+Description=TaleonTracker Frontend Service
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/opt/taleontracker/frontend
+Environment="PATH=/opt/taleontracker/venv/bin"
+ExecStart=/usr/bin/npm run start
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target 
