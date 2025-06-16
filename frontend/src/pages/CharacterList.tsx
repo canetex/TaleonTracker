@@ -70,11 +70,14 @@ const CharacterList: React.FC = () => {
 
   const handleUpdateCharacter = async (id: number) => {
     try {
+      setLoading(true);
       await api.post(`/api/characters/${id}/update`);
-      fetchCharacters();
+      await fetchCharacters();
+      setLoading(false);
     } catch (err) {
       setError('Erro ao atualizar personagem');
       console.error(err);
+      setLoading(false);
     }
   };
 
