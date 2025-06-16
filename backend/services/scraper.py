@@ -30,16 +30,21 @@ async def get_character_html(character_name: str) -> str:
         'Upgrade-Insecure-Requests': '1'
     }
     
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, headers=headers, timeout=10) as response:
-            response.raise_for_status()
-            html_content = await response.text()
-            logger.info(f"HTML recebido para {character_name} (tamanho: {len(html_content)})")
-            return html_content
+    try:
+        logger.info(f"Fazendo requisição para: {url}")
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=headers, timeout=10) as response:
+                response.raise_for_status()
+                html_content = await response.text()
+                logger.info(f"HTML recebido para {character_name} (tamanho: {len(html_content)})")
+                return html_content
+    except Exception as e:
+        logger.error(f"Erro ao obter HTML para {character_name}: {str(e)}")
+        raise
 
 async def scrape_character_data(character_name: str, db: Session) -> bool:
     try:
-        logger.info(f"Scraping character: {character_name}")
+        logger.info(f"Iniciando scraping do personagem: {character_name}")
         
         # Obtém o HTML com cache
         html_content = await get_character_html(character_name)
