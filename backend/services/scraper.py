@@ -104,7 +104,8 @@ async def scrape_character_data(character_name: str, db: Session) -> bool:
                 level_text = character_data.get('level', '0')
                 # Remove caracteres não numéricos exceto ponto
                 level_text = re.sub(r'[^\d.]', '', level_text)
-                level = int(float(level_text))
+                # Converte para float e depois para inteiro, removendo o ponto
+                level = int(level_text.replace('.', ''))
                 character.level = level
                 character.vocation = character_data.get('vocation', '')
                 character.world = character_data.get('residence', '')  # Usando residence como world
