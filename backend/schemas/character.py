@@ -20,12 +20,12 @@ class CharacterHistory(CharacterHistoryBase):
 
 class CharacterBase(BaseModel):
     name: str
-    level: int
-    vocation: str
-    world: str
+    level: int = 0
+    vocation: str = ""
+    world: str = ""
 
-class CharacterCreate(CharacterBase):
-    pass
+class CharacterCreate(BaseModel):
+    name: str
 
 class CharacterResponse(CharacterBase):
     id: int

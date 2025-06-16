@@ -40,23 +40,27 @@ def create_character(character: CharacterCreate, db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/scrape", response_model=CharacterResponse)
-def scrape_character(character_name: str, db: Session = Depends(get_db)):
-    try:
-        if not scrape_character_data(character_name, db):
-            raise HTTPException(status_code=500, detail="Erro ao obter dados do personagem")
-        character = db.query(Character).filter(Character.name == character_name).first()
-        return character
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+@router.get("/", response_model=List[CharacterResponse])
+def list_characters(db: Session = Depends(get_db)):
+    return db.query(Character).all()
 
-@router.get("/{character_name}", response_model=CharacterResponse)
-def get_character(character_name: str, db: Session = Depends(get_db)):
-    character = db.query(Character).filter(Character.name == character_name).first()
+@router.get("/{character_id}", response_model=CharacterResponse)
+def get_character(character_id: int, db: Session = Depends(get_db)):
+    character = db.query(Character).filter(Character.id == character_id).first()
     if not character:
         raise HTTPException(status_code=404, detail="Personagem não encontrado")
     return character
 
-@router.get("/", response_model=List[CharacterResponse])
-def list_characters(db: Session = Depends(get_db)):
-    return db.query(Character).all()
+@router.post("/{character_id}/update", response_model=CharacterResponse)
+def update_character(character_id: int, db: Session = Depends(get_db)):
+    character = db.query(Character).filter(Character.id == character_id).first()
+    if not character:
+        raise HTTPException(status_code=404, detail="Personagem não encontrado")
+    
+    try:
+        if not scrape_character_data(character.name, db):
+            raise HTTPException(status_code=500, detail="Erro ao atualizar dados do personagem")
+        db.refresh(character)
+        return character
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
