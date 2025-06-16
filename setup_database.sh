@@ -13,6 +13,6 @@ python3 init_db.py
 systemctl status postgresql
 
 # Verificar as tabelas no banco de dados
-PGPASSWORD=taleon123 psql -U taleon -d taleontracker -c "\dt"
-PGPASSWORD=taleon123 psql -U taleon -d taleontracker -c "\d characters"
-PGPASSWORD=taleon123 psql -U taleon -d taleontracker -c "\d character_history" 
+PGPASSWORD=taleon123 psql -h localhost -U taleon -d taleontracker -c "\dt"
+PGPASSWORD=taleon123 psql -h localhost -U taleon -d taleontracker -c "\d characters"
+PGPASSWORD=taleon123 psql -h localhost -U taleon -d taleontracker -c "\d character_history" 
