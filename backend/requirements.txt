@@ -12,4 +12,6 @@ passlib[bcrypt]==1.7.4
 python-multipart==0.0.6
 aiohttp==3.9.1
 pytest==7.4.3
-httpx==0.25.2 
+httpx==0.25.2
+fastapi-cache2==0.2.1
+redis==5.0.1 

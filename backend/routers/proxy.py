@@ -2,16 +2,38 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response
 import httpx
 import logging
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
+from fastapi.middleware.throttling import ThrottlingMiddleware
+from fastapi_cache import FastAPICache
+from fastapi_cache.decorator import cache
+import time
+from typing import Optional
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 BASE_URL = "https://san.taleon.online"
+TIMEOUT = 10.0  # timeout em segundos
+ALLOWED_PATHS = [
+    "characterprofile.php",
+    "guilds.php",
+    "highscores.php",
+    "onlinelist.php"
+]
+
+def is_valid_path(path: str) -> bool:
+    """Verifica se o path é válido e permitido"""
+    parsed = urlparse(path)
+    return any(allowed in parsed.path for allowed in ALLOWED_PATHS)
 
 @router.get("/taleon/{path:path}")
+@cache(expire=300)  # Cache por 5 minutos
 async def proxy_taleon(path: str, request: Request):
     try:
+        # Valida o path
+        if not is_valid_path(path):
+            raise HTTPException(status_code=400, detail="Path não permitido")
+
         # Constrói a URL completa
         full_url = urljoin(BASE_URL, path)
         logger.info(f"Proxy request to: {full_url}")
@@ -30,7 +52,7 @@ async def proxy_taleon(path: str, request: Request):
             "Pragma": "no-cache"
         }
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=TIMEOUT) as client:
             response = await client.get(
                 full_url,
                 params=query_params,
@@ -39,6 +61,9 @@ async def proxy_taleon(path: str, request: Request):
             )
             
             logger.info(f"Proxy response status: {response.status_code}")
+            
+            if response.status_code != 200:
+                raise HTTPException(status_code=response.status_code, detail="Erro ao acessar o servidor Taleon")
             
             # Cria a resposta com os headers apropriados
             return Response(
@@ -54,6 +79,12 @@ async def proxy_taleon(path: str, request: Request):
                     "Expires": "0"
                 }
             )
+    except httpx.TimeoutException:
+        logger.error("Timeout ao acessar o servidor Taleon")
+        raise HTTPException(status_code=504, detail="Timeout ao acessar o servidor Taleon")
+    except httpx.RequestError as e:
+        logger.error(f"Erro na requisição: {str(e)}")
+        raise HTTPException(status_code=502, detail="Erro ao acessar o servidor Taleon")
     except Exception as e:
         logger.error(f"Erro no proxy: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e)) 
