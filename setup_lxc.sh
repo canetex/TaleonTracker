@@ -5,7 +5,7 @@ apt update
 apt upgrade -y
 
 # Instalar dependências
-apt install -y python3-pip python3-venv postgresql postgresql-contrib libpq-dev
+apt install -y python3-pip python3-venv postgresql postgresql-contrib libpq-dev git
 
 # Criar e ativar ambiente virtual
 python3 -m venv /opt/taleontracker/venv
