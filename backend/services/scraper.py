@@ -77,6 +77,17 @@ async def scrape_character_data(character_name: str, db: Session) -> bool:
             character.level = int(character_data.get('level', 0))
             character.vocation = character_data.get('vocation', '')
             character.world = character_data.get('world', '')
+            
+            # Cria um novo registro de histórico
+            history = CharacterHistory(
+                character_id=character.id,
+                level=int(character_data.get('level', 0)),
+                experience=float(character_data.get('experience', 0)),
+                deaths=int(character_data.get('deaths', 0)),
+                timestamp=datetime.utcnow()
+            )
+            db.add(history)
+            
             db.commit()
             logger.info(f"Character {character_name} updated successfully")
             return True
