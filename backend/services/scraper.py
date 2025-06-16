@@ -49,6 +49,7 @@ async def scrape_character_data(character_name: str, db: Session) -> bool:
         # Obtém o HTML com cache
         html_content = await get_character_html(character_name)
         logger.info(f"HTML obtido com sucesso para {character_name}")
+        logger.info(f"Primeiros 1000 caracteres do HTML: {html_content[:1000]}")
         
         soup = BeautifulSoup(html_content, 'html.parser')
         logger.info(f"HTML parseado para {character_name}")
@@ -62,6 +63,9 @@ async def scrape_character_data(character_name: str, db: Session) -> bool:
                 logger.error(f"Nenhuma tabela encontrada para: {character_name}")
                 logger.error(f"HTML recebido: {html_content[:500]}...")  # Log dos primeiros 500 caracteres
                 return False
+        
+        # Log da estrutura da tabela
+        logger.info(f"Estrutura da tabela encontrada: {character_table.prettify()[:500]}")
         
         # Extrai as informações
         rows = character_table.find_all('tr')
