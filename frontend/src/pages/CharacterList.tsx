@@ -49,7 +49,7 @@ const CharacterList: React.FC = () => {
   const handleAddCharacter = async () => {
     try {
       console.log('Enviando dados:', { name: newCharacterName });
-      const response = await api.post('/characters', { name: newCharacterName });
+      const response = await api.post('/characters/', { name: newCharacterName });
       console.log('Resposta:', response.data);
       setOpenDialog(false);
       setNewCharacterName('');
