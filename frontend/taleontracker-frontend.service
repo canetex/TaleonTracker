@@ -5,8 +5,10 @@ After=network.target
 [Service]
 User=root
 WorkingDirectory=/opt/taleontracker/frontend
-Environment="PATH=/opt/taleontracker/venv/bin"
-ExecStart=/usr/bin/npm run start
+Environment="PATH=/opt/taleontracker/venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="NODE_ENV=production"
+Environment="PORT=3000"
+ExecStart=/usr/local/bin/npm run start
 Restart=always
 RestartSec=5
 
