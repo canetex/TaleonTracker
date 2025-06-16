@@ -6,7 +6,7 @@ After=network.target postgresql.service
 User=root
 WorkingDirectory=/opt/taleontracker/backend
 Environment="PATH=/opt/taleontracker/venv/bin"
-ExecStart=/opt/taleontracker/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8001 --reload
+ExecStart=/opt/taleontracker/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 Restart=always
 Environment=POSTGRES_USER=taleon
 Environment=POSTGRES_PASSWORD=taleon123

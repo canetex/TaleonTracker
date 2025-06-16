@@ -6,6 +6,11 @@ from models.character_history import CharacterHistory
 from datetime import datetime
 import urllib.parse
 import re
+import logging
+
+# Configurar logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def scrape_character_data(character_name: str, db: Session) -> bool:
     try:
@@ -21,15 +26,15 @@ def scrape_character_data(character_name: str, db: Session) -> bool:
             'Upgrade-Insecure-Requests': '1'
         }
         
-        print(f"Fazendo requisição para: {url}")
-        response = requests.get(url, headers=headers)
+        logger.info(f"Fazendo requisição para: {url}")
+        response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
         
         soup = BeautifulSoup(response.text, 'html.parser')
         
         # Verificar se o personagem existe
         if "Character profile of" not in response.text:
-            print(f"Personagem {character_name} não encontrado")
+            logger.error(f"Personagem {character_name} não encontrado")
             return False
             
         # Encontrar a tabela de informações do personagem
@@ -39,15 +44,19 @@ def scrape_character_data(character_name: str, db: Session) -> bool:
         deaths_info = None
         
         for table in tables:
-            if table.find('th') and 'Character profile of' in table.find('th').text:
-                character_info = table
-            elif table.find('th') and 'Experience History' in table.find('th').text:
-                exp_info = table
-            elif table.find('th') and 'Death list' in table.find('th').text:
-                deaths_info = table
+            if table.find('th'):
+                th_text = table.find('th').text.strip()
+                logger.debug(f"Encontrada tabela com cabeçalho: {th_text}")
+                if 'Character profile of' in th_text:
+                    character_info = table
+                elif 'Experience History' in th_text:
+                    exp_info = table
+                elif 'Death list' in th_text:
+                    deaths_info = table
         
         if not character_info:
-            print("Tabela de informações do personagem não encontrada")
+            logger.error("Tabela de informações do personagem não encontrada")
+            logger.debug(f"Conteúdo da página: {response.text[:500]}...")  # Log dos primeiros 500 caracteres
             return False
             
         # Extrair informações básicas
@@ -58,6 +67,7 @@ def scrape_character_data(character_name: str, db: Session) -> bool:
                 key = cols[0].text.strip().lower()
                 value = cols[1].text.strip()
                 character_data[key] = value
+                logger.debug(f"Encontrado dado: {key} = {value}")
         
         # Extrair nível
         level_text = character_data.get('level', '0')
@@ -95,13 +105,13 @@ def scrape_character_data(character_name: str, db: Session) -> bool:
             db.add(character)
             db.commit()
             db.refresh(character)
-            print(f"Personagem criado: {character_name} (Nível {level})")
+            logger.info(f"Personagem criado: {character_name} (Nível {level})")
         else:
             character.level = level
             character.vocation = vocation
             character.world = 'Taleon'
             db.commit()
-            print(f"Personagem atualizado: {character_name} (Nível {level})")
+            logger.info(f"Personagem atualizado: {character_name} (Nível {level})")
         
         # Criar histórico
         history = CharacterHistory(
@@ -114,11 +124,14 @@ def scrape_character_data(character_name: str, db: Session) -> bool:
         
         db.add(history)
         db.commit()
-        print(f"Histórico criado para: {character_name}")
+        logger.info(f"Histórico criado para: {character_name}")
         return True
         
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Erro na requisição HTTP: {str(e)}")
+        return False
     except Exception as e:
-        print(f"Erro ao fazer scraping: {str(e)}")
+        logger.error(f"Erro ao fazer scraping: {str(e)}")
         return False
 
 def update_all_characters():
@@ -130,6 +143,7 @@ def update_all_characters():
     try:
         characters = db.query(Character).all()
         for character in characters:
+            logger.info(f"Atualizando personagem: {character.name}")
             scrape_character_data(character.name, db)
     finally:
         db.close()
