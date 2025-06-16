@@ -104,8 +104,15 @@ export const deleteCharacter = async (id: number): Promise<void> => {
 
 export const updateCharacterData = async (id: number): Promise<Character> => {
   try {
-    const response: AxiosResponse<ApiResponse<Character>> = await api.post(`/api/characters/${id}/update`);
-    return response.data.data;
+    console.log('Enviando requisição para atualizar personagem:', id);
+    const response = await api.post(`/api/characters/${id}/update`);
+    console.log('Resposta da API:', response);
+    
+    if (!response.data) {
+      throw new Error('Resposta vazia da API');
+    }
+    
+    return response.data;
   } catch (error: unknown) {
     if (error instanceof AxiosError) {
       console.error('Erro ao atualizar dados do personagem:', error.response?.data);

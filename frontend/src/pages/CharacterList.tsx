@@ -83,13 +83,17 @@ const CharacterList: React.FC = () => {
       const response = await updateCharacterData(id);
       console.log('Resposta recebida:', response);
       
-      setLastUpdateResponse({
-        status: 200,
-        statusText: 'OK',
-        data: response
-      });
-      
-      await fetchCharacters();
+      if (response) {
+        setLastUpdateResponse({
+          status: 200,
+          statusText: 'OK',
+          data: response
+        });
+        
+        await fetchCharacters();
+      } else {
+        throw new Error('Resposta vazia da API');
+      }
     } catch (error) {
       console.error('Erro ao atualizar personagem:', error);
       setLastUpdateResponse({
