@@ -33,12 +33,17 @@ const CharacterList: React.FC = () => {
   const fetchCharacters = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/api/characters');
-      setCharacters(response.data);
-      setError(null);
-    } catch (err) {
-      setError('Erro ao carregar personagens');
-      console.error(err);
+      console.log('Buscando lista de personagens...');
+      
+      const response = await fetch('http://192.168.1.200:8000/api/characters/');
+      console.log('Resposta da lista:', response);
+      
+      const data = await response.json();
+      console.log('Dados da lista:', data);
+      
+      setCharacters(data);
+    } catch (error) {
+      console.error('Erro ao buscar personagens:', error);
     } finally {
       setLoading(false);
     }
@@ -73,14 +78,29 @@ const CharacterList: React.FC = () => {
   const handleUpdateCharacter = async (id: number) => {
     try {
       setUpdatingId(id);
-      const response = await api.post(`/api/characters/${id}/update`);
-      const data = await response.data;
-      setLastUpdateResponse(data);
+      console.log('Iniciando atualização do personagem:', id);
+      
+      const response = await fetch(`http://192.168.1.200:8000/api/characters/${id}/update`, {
+        method: 'POST',
+      });
+      
+      console.log('Resposta recebida:', response);
+      const data = await response.json();
+      console.log('Dados recebidos:', data);
+      
+      setLastUpdateResponse({
+        status: response.status,
+        statusText: response.statusText,
+        data: data
+      });
+      
       await fetchCharacters();
-    } catch (err) {
-      setError('Erro ao atualizar personagem');
-      console.error(err);
-      setLastUpdateResponse({ error: err });
+    } catch (error) {
+      console.error('Erro ao atualizar personagem:', error);
+      setLastUpdateResponse({
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        timestamp: new Date().toISOString()
+      });
     } finally {
       setUpdatingId(null);
     }
