@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { api } from '../services/api';
+import { addCharacter } from '../services/api';
+import { TextField, Button, Box, Alert } from '@mui/material';
 
 export interface AddCharacterFormProps {
   onAdd: () => Promise<void>;
@@ -17,7 +18,7 @@ const AddCharacterForm: React.FC<AddCharacterFormProps> = ({ onAdd }) => {
     setError('');
 
     try {
-      await api.post('/characters', { name, world });
+      await addCharacter({ name, world });
       setName('');
       setWorld('');
       await onAdd();
@@ -29,34 +30,37 @@ const AddCharacterForm: React.FC<AddCharacterFormProps> = ({ onAdd }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="mb-4">
-      <div className="flex gap-2">
-        <input
-          type="text"
+    <Box component="form" onSubmit={handleSubmit} sx={{ mb: 3 }}>
+      <Box sx={{ display: 'flex', gap: 2 }}>
+        <TextField
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Nome do personagem"
-          className="flex-1 p-2 border rounded"
           required
+          fullWidth
         />
-        <input
-          type="text"
+        <TextField
           value={world}
           onChange={(e) => setWorld(e.target.value)}
           placeholder="Mundo"
-          className="flex-1 p-2 border rounded"
           required
+          fullWidth
         />
-        <button
+        <Button
           type="submit"
+          variant="contained"
           disabled={loading}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-blue-300"
+          sx={{ minWidth: 120 }}
         >
           {loading ? 'Adicionando...' : 'Adicionar'}
-        </button>
-      </div>
-      {error && <p className="text-red-500 mt-2">{error}</p>}
-    </form>
+        </Button>
+      </Box>
+      {error && (
+        <Alert severity="error" sx={{ mt: 2 }}>
+          {error}
+        </Alert>
+      )}
+    </Box>
   );
 };
 

@@ -14,7 +14,7 @@ import {
 } from '@mui/material';
 import { Refresh as RefreshIcon } from '@mui/icons-material';
 
-import { api, updateCharacterData } from '../services/api';
+import { getCharacters, updateCharacter } from '../services/api';
 import type { Character } from '../types';
 import { formatNumber, formatDate } from '../utils/format';
 import AddCharacterForm from '../components/AddCharacterForm';
@@ -31,10 +31,7 @@ const CharacterList: React.FC = () => {
       setLoading(true);
       console.log('Buscando lista de personagens...');
       
-      const response = await fetch('http://192.168.1.200:8000/api/characters/');
-      console.log('Resposta da lista:', response);
-      
-      const data = await response.json();
+      const data = await getCharacters();
       console.log('Dados da lista:', data);
       
       setCharacters(data);
@@ -64,7 +61,7 @@ const CharacterList: React.FC = () => {
       setUpdatingId(id);
       console.log('Iniciando atualização do personagem:', id);
       
-      const response = await updateCharacterData(id);
+      const response = await updateCharacter(id, {});
       console.log('Resposta recebida:', response);
       
       if (response) {

@@ -7,6 +7,7 @@ export interface Character {
   vocation: string;
   world: string;
   last_updated: string;
+  history: CharacterHistory[];
 }
 
 export interface CharacterHistory {
@@ -22,4 +23,20 @@ export interface CharacterHistory {
 export interface CharacterCreate {
   name: string;
   world: string;
-} 
+}
+
+export interface ApiResponse<T> {
+  data: T;
+  status: number;
+  statusText: string;
+  headers: Record<string, string>;
+}
+
+export interface ApiError {
+  response?: {
+    data: any;
+    status: number;
+    statusText: string;
+  };
+  message: string;
+}

@@ -1,81 +1,41 @@
-import axios, { AxiosError, AxiosResponse } from 'axios';
-import { Character } from '../types/character';
+import axios from 'axios';
+import type { AxiosError } from 'axios';
+import type { Character, CharacterCreate, ApiResponse } from '../types';
 
-// Interface para resposta da API
-interface ApiResponse<T> {
-  data: T;
-  status: number;
-  message?: string;
-}
-
-// Usa a URL base do ambiente
-const baseURL = process.env.REACT_APP_API_URL || 'http://192.168.1.200:8000';
-
-console.log('API URL:', baseURL); // Debug
-
-export const api = axios.create({
-  baseURL,
-  headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  },
-  timeout: 30000, // Aumenta o timeout para 30 segundos
-  withCredentials: false,
+const api = axios.create({
+  baseURL: 'http://192.168.1.200:8000',
 });
-
-// Interceptor para tratamento de erros
-api.interceptors.response.use(
-  (response: AxiosResponse) => response,
-  (error: AxiosError) => {
-    if (error.response) {
-      // O servidor respondeu com um status de erro
-      console.error('Erro na resposta:', error.response.data);
-      if (error.response.status === 403) {
-        console.error('Erro de CORS ou permissão negada');
-      } else if (error.response.status === 500) {
-        console.error('Erro interno do servidor:', error.response.data);
-      }
-    } else if (error.request) {
-      // A requisição foi feita mas não houve resposta
-      console.error('Erro na requisição:', error.request);
-    } else {
-      // Algo aconteceu na configuração da requisição
-      console.error('Erro:', error.message);
-    }
-    return Promise.reject(error);
-  }
-);
 
 export const getCharacters = async (): Promise<Character[]> => {
   try {
-    const response: AxiosResponse<ApiResponse<Character[]>> = await api.get('/api/characters');
+    const response = await api.get<ApiResponse<Character[]>>('/api/characters');
     return response.data.data;
-  } catch (error: unknown) {
-    if (error instanceof AxiosError) {
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
       console.error('Erro ao buscar personagens:', error.response?.data);
     }
     throw error;
   }
 };
 
-export const addCharacter = async (characterData: Omit<Character, 'id'>): Promise<Character> => {
+export const addCharacter = async (character: CharacterCreate): Promise<Character> => {
   try {
-    const response: AxiosResponse<ApiResponse<Character>> = await api.post('/api/characters', characterData);
+    const response = await api.post<ApiResponse<Character>>('/api/characters', character);
     return response.data.data;
-  } catch (error: unknown) {
-    if (error instanceof AxiosError) {
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
       console.error('Erro ao adicionar personagem:', error.response?.data);
     }
     throw error;
   }
 };
 
-export const updateCharacter = async (id: number, characterData: Partial<Character>): Promise<Character> => {
+export const updateCharacter = async (id: number, character: Partial<Character>): Promise<Character> => {
   try {
-    const response: AxiosResponse<ApiResponse<Character>> = await api.put(`/api/characters/${id}`, characterData);
+    const response = await api.put<ApiResponse<Character>>(`/api/characters/${id}`, character);
     return response.data.data;
-  } catch (error: unknown) {
-    if (error instanceof AxiosError) {
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
       console.error('Erro ao atualizar personagem:', error.response?.data);
     }
     throw error;
@@ -85,27 +45,20 @@ export const updateCharacter = async (id: number, characterData: Partial<Charact
 export const deleteCharacter = async (id: number): Promise<void> => {
   try {
     await api.delete(`/api/characters/${id}`);
-  } catch (error: unknown) {
-    if (error instanceof AxiosError) {
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
       console.error('Erro ao deletar personagem:', error.response?.data);
     }
     throw error;
   }
 };
 
-export const updateCharacterData = async (id: number): Promise<Character> => {
+export const getCharacterHistory = async (id: number): Promise<Character> => {
   try {
-    console.log('Enviando requisição para atualizar personagem:', id);
-    const response = await api.post(`/api/characters/${id}/update`);
-    console.log('Resposta da API:', response);
-    
-    if (!response.data) {
-      throw new Error('Resposta vazia da API');
-    }
-    
-    return response.data;
-  } catch (error: unknown) {
-    if (error instanceof AxiosError) {
+    const response = await api.get<ApiResponse<Character>>(`/api/characters/${id}/history`);
+    return response.data.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
       console.error('Erro ao atualizar dados do personagem:', error.response?.data);
     }
     throw error;
