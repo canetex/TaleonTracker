@@ -2,11 +2,11 @@ export interface Character {
   id: number;
   name: string;
   level: number;
+  experience: number;
+  daily_experience: number;
   vocation: string;
   world: string;
-  created_at: string;
-  updated_at: string;
-  history: CharacterHistory[];
+  last_updated: string;
 }
 
 export interface CharacterHistory {
@@ -21,4 +21,5 @@ export interface CharacterHistory {
 
 export interface CharacterCreate {
   name: string;
+  world: string;
 } 

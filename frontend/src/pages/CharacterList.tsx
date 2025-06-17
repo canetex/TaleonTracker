@@ -15,7 +15,7 @@ import {
 import { Refresh as RefreshIcon } from '@mui/icons-material';
 
 import { api, updateCharacterData } from '../services/api';
-import { Character } from '../types/character';
+import type { Character } from '../types';
 import { formatNumber, formatDate } from '../utils/format';
 import AddCharacterForm from '../components/AddCharacterForm';
 
