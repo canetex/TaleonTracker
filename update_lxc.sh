@@ -29,6 +29,10 @@ BRANCH="feature/daily-experience-tracking"
 # Entrar no diretório da aplicação
 cd $INSTALL_DIR
 
+# Remover arquivo local que está causando conflito
+echo -e "${YELLOW}Removendo arquivo local que está causando conflito...${NC}"
+rm -f update_lxc.sh
+
 # Atualizar o código
 echo -e "${YELLOW}Atualizando código...${NC}"
 git fetch origin
