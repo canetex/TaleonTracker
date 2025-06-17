@@ -111,35 +111,41 @@ const Dashboard: React.FC = () => {
                 </Grid>
               </Grid>
 
-              <Line
-                data={{
-                  labels: character.history.map((h: CharacterHistory) =>
-                    new Date(h.timestamp).toLocaleDateString()
-                  ),
-                  datasets: [
-                    {
-                      label: 'Nível',
-                      data: character.history.map((h: CharacterHistory) => h.level),
-                      borderColor: 'rgb(75, 192, 192)',
-                      tension: 0.1,
+              {character.history && character.history.length > 0 ? (
+                <Line
+                  data={{
+                    labels: character.history.map((h: CharacterHistory) =>
+                      new Date(h.timestamp).toLocaleDateString()
+                    ),
+                    datasets: [
+                      {
+                        label: 'Nível',
+                        data: character.history.map((h: CharacterHistory) => h.level),
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1,
+                      },
+                      {
+                        label: 'Experiência',
+                        data: character.history.map((h: CharacterHistory) => h.experience),
+                        borderColor: 'rgb(255, 99, 132)',
+                        tension: 0.1,
+                      },
+                    ],
+                  }}
+                  options={{
+                    responsive: true,
+                    plugins: {
+                      legend: {
+                        position: 'top' as const,
+                      },
                     },
-                    {
-                      label: 'Experiência',
-                      data: character.history.map((h: CharacterHistory) => h.experience),
-                      borderColor: 'rgb(255, 99, 132)',
-                      tension: 0.1,
-                    },
-                  ],
-                }}
-                options={{
-                  responsive: true,
-                  plugins: {
-                    legend: {
-                      position: 'top' as const,
-                    },
-                  },
-                }}
-              />
+                  }}
+                />
+              ) : (
+                <Typography variant="body2" color="text.secondary" align="center">
+                  Sem histórico disponível
+                </Typography>
+              )}
             </Paper>
           </Grid>
         ))}
