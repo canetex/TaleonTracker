@@ -58,23 +58,10 @@ const CharacterList: React.FC = () => {
 
   const handleAddCharacter = async () => {
     try {
-      console.log('Enviando dados:', { name: newCharacterName });
-      const response = await api.post('/api/characters/', { name: newCharacterName });
-      console.log('Resposta:', response.data);
-      setOpenDialog(false);
-      setNewCharacterName('');
       await fetchCharacters();
     } catch (err: any) {
-      console.error('Erro detalhado:', err);
-      let errorMessage = 'Erro ao adicionar personagem';
-      
-      if (err.response?.data?.detail) {
-        errorMessage = err.response.data.detail;
-      } else if (err.message) {
-        errorMessage = err.message;
-      }
-      
-      setError(errorMessage);
+      console.error('Erro ao atualizar lista:', err);
+      setError('Erro ao atualizar lista de personagens');
     }
   };
 
@@ -154,6 +141,9 @@ const CharacterList: React.FC = () => {
                   Experiência: {formatNumber(character.experience)}
                 </Typography>
                 <Typography color="textSecondary" gutterBottom>
+                  Experiência Diária: {formatNumber(character.daily_experience)}
+                </Typography>
+                <Typography color="textSecondary" gutterBottom>
                   Mortes: {character.deaths}
                 </Typography>
                 <Typography variant="body2" color="textSecondary">
@@ -165,9 +155,9 @@ const CharacterList: React.FC = () => {
                   size="small"
                   color="primary"
                   onClick={() => handleUpdateCharacter(character.id)}
-                  disabled={loading}
+                  disabled={updatingId === character.id}
                 >
-                  {loading ? "Atualizando..." : "Atualizar"}
+                  {updatingId === character.id ? "Atualizando..." : "Atualizar"}
                 </Button>
               </CardActions>
             </Card>

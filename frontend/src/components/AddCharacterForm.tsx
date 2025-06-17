@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { api } from '../services/api';
 
-const AddCharacterForm: React.FC = () => {
+interface AddCharacterFormProps {
+  onAdd: () => Promise<void>;
+}
+
+const AddCharacterForm: React.FC<AddCharacterFormProps> = ({ onAdd }) => {
   const [name, setName] = useState('');
   const [world, setWorld] = useState('');
   const [loading, setLoading] = useState(false);
@@ -16,7 +20,7 @@ const AddCharacterForm: React.FC = () => {
       await api.post('/characters', { name, world });
       setName('');
       setWorld('');
-      window.location.reload();
+      await onAdd();
     } catch (err) {
       setError('Erro ao adicionar personagem. Verifique se o nome e mundo estão corretos.');
     } finally {
