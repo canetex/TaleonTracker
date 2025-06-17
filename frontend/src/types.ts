@@ -3,6 +3,7 @@ export interface CharacterHistory {
   experience: number;
   deaths: number;
   created_at: string;
+  timestamp: string;
 }
 
 export interface Character {
