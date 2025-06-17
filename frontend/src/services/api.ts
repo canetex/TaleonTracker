@@ -1,14 +1,5 @@
 import axios, { AxiosError, AxiosResponse } from 'axios';
-
-// Interface para o tipo de personagem
-interface Character {
-  id: number;
-  name: string;
-  race: string;
-  class: string;
-  level: number;
-  // Adicione outros campos conforme necessário
-}
+import { Character } from '../types/character';
 
 // Interface para resposta da API
 interface ApiResponse<T> {
