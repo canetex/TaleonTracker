@@ -9,19 +9,14 @@ import {
   Grid,
   Typography,
   CircularProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
   Container,
   Alert,
 } from '@mui/material';
-import { Add as AddIcon, Refresh as RefreshIcon } from '@mui/icons-material';
+import { Refresh as RefreshIcon } from '@mui/icons-material';
 
 import { api, updateCharacterData } from '../services/api';
 import { Character } from '../types/character';
-import { formatNumber } from '../utils/format';
+import { formatNumber, formatDate } from '../utils/format';
 import AddCharacterForm from '../components/AddCharacterForm';
 
 const CharacterList: React.FC = () => {
@@ -29,8 +24,6 @@ const CharacterList: React.FC = () => {
   const [characters, setCharacters] = useState<Character[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [newCharacterName, setNewCharacterName] = useState('');
   const [updatingId, setUpdatingId] = useState<number | null>(null);
 
   const fetchCharacters = async () => {
@@ -47,6 +40,7 @@ const CharacterList: React.FC = () => {
       setCharacters(data);
     } catch (error) {
       console.error('Erro ao buscar personagens:', error);
+      setError('Erro ao buscar lista de personagens');
     } finally {
       setLoading(false);
     }
@@ -80,6 +74,7 @@ const CharacterList: React.FC = () => {
       }
     } catch (error) {
       console.error('Erro ao atualizar personagem:', error);
+      setError('Erro ao atualizar personagem');
     } finally {
       setUpdatingId(null);
     }
@@ -114,20 +109,9 @@ const CharacterList: React.FC = () => {
           <Grid item xs={12} sm={6} md={4} key={character.id}>
             <Card>
               <CardContent>
-                <Box display="flex" alignItems="center" mb={1}>
-                  {character.outfit && (
-                    <Box mr={1}>
-                      <img 
-                        src={character.outfit} 
-                        alt={`${character.name} outfit`}
-                        style={{ width: 32, height: 32 }}
-                      />
-                    </Box>
-                  )}
-                  <Typography variant="h6" component="div">
-                    {character.name}
-                  </Typography>
-                </Box>
+                <Typography variant="h6" component="div">
+                  {character.name}
+                </Typography>
                 <Typography color="textSecondary" gutterBottom>
                   Nível: {formatNumber(character.level)}
                 </Typography>
@@ -135,7 +119,7 @@ const CharacterList: React.FC = () => {
                   Vocação: {character.vocation}
                 </Typography>
                 <Typography color="textSecondary" gutterBottom>
-                  Cidade: {character.world}
+                  Mundo: {character.world}
                 </Typography>
                 <Typography color="textSecondary" gutterBottom>
                   Experiência: {formatNumber(character.experience)}
@@ -143,11 +127,8 @@ const CharacterList: React.FC = () => {
                 <Typography color="textSecondary" gutterBottom>
                   Experiência Diária: {formatNumber(character.daily_experience)}
                 </Typography>
-                <Typography color="textSecondary" gutterBottom>
-                  Mortes: {character.deaths}
-                </Typography>
                 <Typography variant="body2" color="textSecondary">
-                  Última atualização: {new Date(character.last_updated).toLocaleString()}
+                  Última atualização: {formatDate(character.last_updated)}
                 </Typography>
               </CardContent>
               <CardActions>
@@ -156,6 +137,7 @@ const CharacterList: React.FC = () => {
                   color="primary"
                   onClick={() => handleUpdateCharacter(character.id)}
                   disabled={updatingId === character.id}
+                  startIcon={<RefreshIcon />}
                 >
                   {updatingId === character.id ? "Atualizando..." : "Atualizar"}
                 </Button>
