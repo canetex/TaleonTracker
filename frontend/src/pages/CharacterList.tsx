@@ -22,6 +22,7 @@ import { Add as AddIcon, Refresh as RefreshIcon } from '@mui/icons-material';
 import { api, updateCharacterData } from '../services/api';
 import { Character } from '../types';
 import { formatNumber } from '../utils/format';
+import AddCharacterForm from '../components/AddCharacterForm';
 
 const CharacterList: React.FC = () => {
   const navigate = useNavigate();
