@@ -29,19 +29,19 @@ BRANCH="feature/daily-experience-tracking"
 # Entrar no diretório da aplicação
 cd $INSTALL_DIR
 
-# Fazer backup do banco de dados
-echo -e "${YELLOW}Fazendo backup do banco de dados...${NC}"
-./reset_database.sh
-
 # Atualizar o código
 echo -e "${YELLOW}Atualizando código...${NC}"
 git fetch origin
 git checkout $BRANCH
 git pull origin $BRANCH
 
+# Atualizar o banco de dados
+echo -e "${YELLOW}Atualizando banco de dados...${NC}"
+cd "$INSTALL_DIR/backend"
+python3 init_db.py
+
 # Atualizar dependências do backend
 echo -e "${YELLOW}Atualizando dependências do backend...${NC}"
-cd "$INSTALL_DIR/backend"
 pip3 install -r requirements.txt
 
 # Atualizar dependências do frontend
