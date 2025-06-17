@@ -111,17 +111,23 @@ const CharacterDetail: React.FC = () => {
           {character.name}
         </Typography>
         <Grid container spacing={3}>
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={12} sm={3}>
             <Typography variant="h6">Nível Atual</Typography>
             <Typography variant="h4">{latestHistory.level}</Typography>
           </Grid>
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={12} sm={3}>
             <Typography variant="h6">Experiência</Typography>
             <Typography variant="h4">
               {latestHistory.experience.toLocaleString()}
             </Typography>
           </Grid>
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={12} sm={3}>
+            <Typography variant="h6">Experiência Diária</Typography>
+            <Typography variant="h4">
+              {latestHistory.daily_experience.toLocaleString()}
+            </Typography>
+          </Grid>
+          <Grid item xs={12} sm={3}>
             <Typography variant="h6">Mortes</Typography>
             <Typography variant="h4">{latestHistory.deaths}</Typography>
           </Grid>

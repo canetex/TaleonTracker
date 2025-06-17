@@ -122,6 +122,7 @@ async def scrape_character_data(character_name: str, db: Session) -> bool:
                 
                 # Extrai experiência e mortes
                 experience = 0
+                daily_experience = 0
                 deaths = 0
                 
                 # Tenta extrair experiência
@@ -131,6 +132,14 @@ async def scrape_character_data(character_name: str, db: Session) -> bool:
                     exp_text = re.sub(r'[^\d]', '', exp_text)
                     experience = float(exp_text) if exp_text else 0
                     logger.info(f"Experiência extraída de '{exp_text}' para {experience}")
+                
+                # Tenta extrair experiência diária
+                daily_exp_text = character_data.get('daily_experience', '0')
+                if daily_exp_text:
+                    # Remove caracteres não numéricos
+                    daily_exp_text = re.sub(r'[^\d]', '', daily_exp_text)
+                    daily_experience = float(daily_exp_text) if daily_exp_text else 0
+                    logger.info(f"Experiência diária extraída de '{daily_exp_text}' para {daily_experience}")
                 
                 # Tenta extrair mortes
                 deaths_text = character_data.get('deaths', '0')
@@ -146,6 +155,7 @@ async def scrape_character_data(character_name: str, db: Session) -> bool:
                         character_id=character.id,
                         level=level,  # Usando o mesmo nível já processado
                         experience=experience,
+                        daily_experience=daily_experience,
                         deaths=deaths,
                         timestamp=datetime.utcnow()
                     )
