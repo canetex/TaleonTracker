@@ -49,7 +49,7 @@ check_and_install_dependencies() {
         "git:git"
         "python3:python3"
         "pip3:python3-pip"
-        "python3 -m venv --help:python3-venv"
+        "dpkg -l python3-venv:python3-venv"
         "node:nodejs"
         "npm:npm"
         "nginx:nginx"
@@ -62,7 +62,7 @@ check_and_install_dependencies() {
         "cron:cron"
         "ufw:ufw"
         "certbot:certbot"
-        "python3-certbot-nginx:python3-certbot-nginx"
+        "dpkg -l python3-certbot-nginx:python3-certbot-nginx"
         "netstat:net-tools"
     )
     
@@ -71,9 +71,16 @@ check_and_install_dependencies() {
     # Verificar dependências
     for dep in "${dependencies[@]}"; do
         IFS=':' read -r cmd package <<< "$dep"
-        if ! command -v "$cmd" &> /dev/null; then
-            log "Dependência não encontrada: $package" "WARNING"
-            missing_deps+=("$package")
+        if [[ $cmd == dpkg* ]]; then
+            if ! dpkg -l | grep -q "^ii  $package "; then
+                log "Dependência não encontrada: $package" "WARNING"
+                missing_deps+=("$package")
+            fi
+        else
+            if ! command -v "$cmd" &> /dev/null; then
+                log "Dependência não encontrada: $package" "WARNING"
+                missing_deps+=("$package")
+            fi
         fi
     done
     
