@@ -522,6 +522,129 @@ run_install_scripts() {
     return 0
 }
 
+# Função para configurar o backend
+setup_backend() {
+    log "Configurando backend..." "INFO"
+    
+    # Criar e ativar ambiente virtual
+    cd "${APP_DIR}/backend"
+    python3 -m venv venv
+    source venv/bin/activate
+    
+    # Instalar dependências
+    pip install --upgrade pip
+    pip install -r requirements.txt
+    
+    # Configurar variáveis de ambiente
+    if [ ! -f .env ]; then
+        cp .env.template .env
+        sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=${DB_PASSWORD}/" .env
+        sed -i "s/REDIS_PASSWORD=.*/REDIS_PASSWORD=${REDIS_PASSWORD}/" .env
+    fi
+    
+    # Configurar serviço systemd
+    cat > /etc/systemd/system/taleontracker-backend.service << EOF
+[Unit]
+Description=TaleonTracker Backend
+After=network.target postgresql.service redis-server.service
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=${APP_DIR}/backend
+Environment="PATH=${APP_DIR}/backend/venv/bin"
+ExecStart=${APP_DIR}/backend/venv/bin/uvicorn main:app --host 0.0.0.0 --port ${BACKEND_PORT}
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    
+    # Recarregar systemd e iniciar serviço
+    systemctl daemon-reload
+    systemctl enable taleontracker-backend
+    systemctl start taleontracker-backend
+    
+    log "Backend configurado com sucesso" "INFO"
+}
+
+# Função para configurar o frontend
+setup_frontend() {
+    log "Configurando frontend..." "INFO"
+    
+    # Instalar dependências
+    cd "${APP_DIR}/frontend"
+    npm install
+    
+    # Configurar variáveis de ambiente
+    if [ ! -f .env ]; then
+        cp .env.template .env
+        sed -i "s/VITE_API_URL=.*/VITE_API_URL=http:\/\/localhost:${BACKEND_PORT}/" .env
+    fi
+    
+    # Configurar serviço systemd
+    cat > /etc/systemd/system/taleontracker-frontend.service << EOF
+[Unit]
+Description=TaleonTracker Frontend
+After=network.target taleontracker-backend.service
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=${APP_DIR}/frontend
+Environment="PATH=/usr/local/bin:/usr/bin:/bin"
+ExecStart=/usr/bin/npm run dev
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    
+    # Recarregar systemd e iniciar serviço
+    systemctl daemon-reload
+    systemctl enable taleontracker-frontend
+    systemctl start taleontracker-frontend
+    
+    log "Frontend configurado com sucesso" "INFO"
+}
+
+# Função para configurar o Nginx
+setup_nginx() {
+    log "Configurando Nginx..." "INFO"
+    
+    # Criar configuração do Nginx
+    cat > /etc/nginx/sites-available/taleontracker << EOF
+server {
+    listen 80;
+    server_name _;
+
+    location / {
+        proxy_pass http://localhost:${FRONTEND_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_cache_bypass \$http_upgrade;
+    }
+
+    location /api {
+        proxy_pass http://localhost:${BACKEND_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_cache_bypass \$http_upgrade;
+    }
+}
+EOF
+    
+    # Habilitar site e reiniciar Nginx
+    ln -sf /etc/nginx/sites-available/taleontracker /etc/nginx/sites-enabled/
+    nginx -t && systemctl restart nginx
+    
+    log "Nginx configurado com sucesso" "INFO"
+}
+
 # Função principal de instalação
 main() {
     log "Iniciando instalação do TaleonTracker" "INFO"
@@ -541,9 +664,6 @@ main() {
     # Configurar firewall
     setup_firewall || exit 1
     
-    # Configurar Nginx
-    setup_nginx || exit 1
-    
     # Configurar PostgreSQL
     setup_postgresql || exit 1
     
@@ -561,11 +681,14 @@ main() {
         exit 1
     }
     
-    # Configurar arquivos de ambiente
-    setup_env_files || exit 1
+    # Configurar backend
+    setup_backend || exit 1
     
-    # Executar scripts de instalação
-    run_install_scripts || exit 1
+    # Configurar frontend
+    setup_frontend || exit 1
+    
+    # Configurar Nginx
+    setup_nginx || exit 1
     
     # Configurar cron jobs
     setup_cron_jobs || exit 1
@@ -573,14 +696,7 @@ main() {
     # Configurar monitoramento
     setup_monitoring || exit 1
     
-    # Executar script de deploy
-    log "Iniciando deploy..." "INFO"
-    "${APP_DIR}/scripts/deploy/deploy_taleontracker.sh" || {
-        log "Falha no deploy" "ERROR"
-        exit 1
-    }
-    
-    # Verificar serviços novamente após o deploy
+    # Verificar serviços novamente
     verify_and_start_services || exit 1
     
     log "Instalação concluída com sucesso" "INFO"
@@ -607,5 +723,5 @@ main() {
     echo "Status dos serviços: supervisorctl status"
 }
 
-# Executar instalação
+# Executar função principal
 main 
