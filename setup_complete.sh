@@ -105,32 +105,38 @@ setup_postgresql() {
     log "PostgreSQL configurado com sucesso" "INFO"
 }
 
-# Função para verificar o status dos serviços
+# Função para verificar serviços
 verify_services() {
-    echo -e "${YELLOW}Verificando status dos serviços...${NC}"
+    log "Verificando serviços..." "INFO"
     
-    # Verificar PostgreSQL
-    if systemctl is-active --quiet postgresql; then
-        echo -e "${GREEN}PostgreSQL está rodando${NC}"
-    else
-        echo -e "${RED}PostgreSQL não está rodando${NC}"
-        systemctl start postgresql
-    fi
+    local services=(
+        "nginx"
+        "postgresql"
+        "redis-server"
+        "supervisor"
+    )
     
-    # Verificar Backend
-    if systemctl is-active --quiet taleontracker; then
-        echo -e "${GREEN}Backend está rodando${NC}"
-    else
-        echo -e "${RED}Backend não está rodando${NC}"
-        systemctl start taleontracker
-    fi
+    local failed=0
     
-    # Verificar Nginx
-    if systemctl is-active --quiet nginx; then
-        echo -e "${GREEN}Nginx está rodando${NC}"
+    for service in "${services[@]}"; do
+        if ! systemctl is-active --quiet "$service"; then
+            log "Serviço $service não está rodando" "ERROR"
+            log "Tentando iniciar $service..." "INFO"
+            systemctl start "$service" || {
+                log "Falha ao iniciar $service" "ERROR"
+                failed=$((failed + 1))
+            }
+        else
+            log "Serviço $service está rodando" "INFO"
+        fi
+    done
+    
+    if [ $failed -eq 0 ]; then
+        log "Todos os serviços estão rodando" "INFO"
+        return 0
     else
-        echo -e "${RED}Nginx não está rodando${NC}"
-        systemctl start nginx
+        log "Alguns serviços falharam ao iniciar" "ERROR"
+        return 1
     fi
 }
 
@@ -246,7 +252,7 @@ else
 fi
 
 # Verificar conexão com o Redis
-echo "🔴 Verificando conexão com o Redis..."
+echo "�� Verificando conexão com o Redis..."
 if redis-cli ping &> /dev/null; then
     echo "✅ Conexão com o Redis OK"
 else
@@ -413,6 +419,109 @@ run_install_scripts() {
     return 0
 }
 
+# Função para verificar e instalar dependências
+check_and_install_dependencies() {
+    log "Verificando dependências do sistema..." "INFO"
+    
+    local dependencies=(
+        "git:git"
+        "python3:python3"
+        "pip3:python3-pip"
+        "python3-venv:python3-venv"
+        "node:nodejs"
+        "npm:npm"
+        "nginx:nginx"
+        "psql:postgresql"
+        "redis-cli:redis-server"
+        "curl:curl"
+        "wget:wget"
+        "unzip:unzip"
+        "supervisord:supervisor"
+        "cron:cron"
+        "ufw:ufw"
+        "certbot:certbot"
+        "python3-certbot-nginx:python3-certbot-nginx"
+    )
+    
+    local missing_deps=()
+    
+    # Verificar dependências
+    for dep in "${dependencies[@]}"; do
+        IFS=':' read -r cmd package <<< "$dep"
+        if ! command -v "$cmd" &> /dev/null; then
+            log "Dependência não encontrada: $cmd" "WARNING"
+            missing_deps+=("$package")
+        fi
+    done
+    
+    # Se houver dependências faltantes, instalar
+    if [ ${#missing_deps[@]} -gt 0 ]; then
+        log "Instalando dependências faltantes..." "INFO"
+        apt update
+        
+        for package in "${missing_deps[@]}"; do
+            log "Instalando $package..." "INFO"
+            apt install -y "$package" || {
+                log "Falha ao instalar $package" "ERROR"
+                return 1
+            }
+        done
+        
+        log "Todas as dependências foram instaladas" "INFO"
+    else
+        log "Todas as dependências estão instaladas" "INFO"
+    fi
+    
+    return 0
+}
+
+# Função para verificar e iniciar serviços
+verify_and_start_services() {
+    log "Verificando e iniciando serviços..." "INFO"
+    
+    local services=(
+        "nginx"
+        "postgresql"
+        "redis-server"
+        "supervisor"
+    )
+    
+    local failed=0
+    
+    for service in "${services[@]}"; do
+        if ! systemctl is-active --quiet "$service"; then
+            log "Serviço $service não está rodando" "WARNING"
+            log "Tentando iniciar $service..." "INFO"
+            
+            # Verificar se o serviço está habilitado
+            if ! systemctl is-enabled --quiet "$service"; then
+                log "Habilitando serviço $service..." "INFO"
+                systemctl enable "$service" || {
+                    log "Falha ao habilitar $service" "ERROR"
+                    failed=$((failed + 1))
+                    continue
+                }
+            fi
+            
+            # Tentar iniciar o serviço
+            systemctl start "$service" || {
+                log "Falha ao iniciar $service" "ERROR"
+                failed=$((failed + 1))
+            }
+        else
+            log "Serviço $service está rodando" "INFO"
+        fi
+    done
+    
+    if [ $failed -eq 0 ]; then
+        log "Todos os serviços estão rodando" "INFO"
+        return 0
+    else
+        log "Alguns serviços falharam ao iniciar" "ERROR"
+        return 1
+    fi
+}
+
 # Função principal de instalação
 main() {
     log "Iniciando instalação do TaleonTracker" "INFO"
@@ -424,22 +533,22 @@ main() {
     }
     
     # Verificar e instalar dependências
-    check_command git || exit 1
-    check_command python3 || exit 1
-    check_command pip3 || exit 1
-    check_command node || exit 1
-    check_command npm || exit 1
+    check_and_install_dependencies || exit 1
     
-    # Verificar versões
-    check_version python3 "${MIN_PYTHON_VERSION}" || exit 1
-    check_version node "${MIN_NODE_VERSION}" || exit 1
-    check_version npm "${MIN_NPM_VERSION}" || exit 1
-    
-    # Limpar instalação anterior
-    cleanup_previous_installation || exit 1
+    # Verificar e iniciar serviços
+    verify_and_start_services || exit 1
     
     # Configurar firewall
     setup_firewall || exit 1
+    
+    # Configurar Nginx
+    setup_nginx || exit 1
+    
+    # Configurar PostgreSQL
+    setup_postgresql || exit 1
+    
+    # Configurar Redis
+    setup_redis || exit 1
     
     # Criar diretório da aplicação
     mkdir -p "${APP_DIR}"
@@ -458,6 +567,12 @@ main() {
     # Executar scripts de instalação
     run_install_scripts || exit 1
     
+    # Configurar cron jobs
+    setup_cron_jobs || exit 1
+    
+    # Configurar monitoramento
+    setup_monitoring || exit 1
+    
     # Executar script de deploy
     log "Iniciando deploy..." "INFO"
     "${APP_DIR}/scripts/deploy/deploy_taleontracker.sh" || {
@@ -465,8 +580,8 @@ main() {
         exit 1
     }
     
-    # Verificar serviços
-    verify_services || exit 1
+    # Verificar serviços novamente após o deploy
+    verify_and_start_services || exit 1
     
     log "Instalação concluída com sucesso" "INFO"
     
@@ -482,7 +597,14 @@ main() {
     echo -e "${YELLOW}Comandos úteis:${NC}"
     echo "Verificar status: ./scripts/verify/verify_database.sh"
     echo "Verificar frontend: ./scripts/verify/verify_frontend.sh"
+    echo "Verificar backend: ./scripts/verify/verify_backend.sh"
     echo "Resetar banco: ./scripts/maintenance/reset_database.sh"
+    
+    # Mostrar informações de monitoramento
+    echo -e "${YELLOW}Monitoramento:${NC}"
+    echo "Logs: /var/log/taleontracker/"
+    echo "Backups: /var/backups/taleontracker/"
+    echo "Status dos serviços: supervisorctl status"
 }
 
 # Executar instalação
