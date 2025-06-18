@@ -14,6 +14,7 @@ REDIS_PASS="taleon123"
 
 # Configurações da aplicação
 APP_DIR="/opt/taleontracker"
+REPO_URL="https://github.com/canetex/TaleonTracker.git"
 BACKEND_PORT="8000"
 FRONTEND_PORT="3000"
 
