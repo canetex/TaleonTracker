@@ -19,6 +19,28 @@ fi
 # Criar diretório de logs
 mkdir -p /var/log/taleontracker
 
+# Função para verificar se a porta do backend está disponível
+check_backend_port() {
+    log "Verificando disponibilidade da porta ${BACKEND_PORT}..." "INFO"
+    
+    if netstat -tuln | grep -q ":${BACKEND_PORT} "; then
+        log "Porta ${BACKEND_PORT} já está em uso" "WARNING"
+        log "Tentando identificar o processo..." "INFO"
+        local pid=$(lsof -i :${BACKEND_PORT} -t)
+        if [ -n "$pid" ]; then
+            log "Processo usando a porta: $pid" "INFO"
+            log "Tentando encerrar o processo..." "INFO"
+            kill -9 $pid || {
+                log "Não foi possível encerrar o processo" "ERROR"
+                return 1
+            }
+        fi
+    fi
+    
+    log "Porta ${BACKEND_PORT} está disponível" "INFO"
+    return 0
+}
+
 # Função para verificar e instalar dependências
 check_and_install_dependencies() {
     log "Verificando dependências do sistema..." "INFO"
@@ -50,7 +72,7 @@ check_and_install_dependencies() {
     for dep in "${dependencies[@]}"; do
         IFS=':' read -r cmd package <<< "$dep"
         if ! command -v "$cmd" &> /dev/null; then
-            log "Dependência não encontrada: $cmd" "WARNING"
+            log "Dependência não encontrada: $package" "WARNING"
             missing_deps+=("$package")
         fi
     done
@@ -66,6 +88,15 @@ check_and_install_dependencies() {
                 log "Falha ao instalar $package" "ERROR"
                 return 1
             }
+        done
+        
+        # Verificar novamente após a instalação
+        for dep in "${dependencies[@]}"; do
+            IFS=':' read -r cmd package <<< "$dep"
+            if ! command -v "$cmd" &> /dev/null; then
+                log "Ainda não foi possível instalar: $package" "ERROR"
+                return 1
+            fi
         done
         
         log "Todas as dependências foram instaladas" "INFO"
@@ -121,45 +152,6 @@ verify_and_start_services() {
         log "Alguns serviços falharam ao iniciar" "ERROR"
         return 1
     fi
-}
-
-# Função para verificar se um comando existe
-check_command() {
-    local cmd=$1
-    local package=$2
-    
-    if ! command -v $cmd &> /dev/null; then
-        echo -e "${YELLOW}Instalando $cmd...${NC}"
-        apt update
-        
-        # Casos especiais de instalação
-        case $cmd in
-            "pip3")
-                apt install -y python3-pip
-                ;;
-            "node")
-                apt install -y nodejs
-                ;;
-            "npm")
-                apt install -y npm
-                ;;
-            *)
-                if [ -n "$package" ]; then
-                    apt install -y $package
-                else
-                    apt install -y $cmd
-                fi
-                ;;
-        esac
-        
-        if command -v $cmd &> /dev/null; then
-            echo -e "${GREEN}$cmd instalado com sucesso!${NC}"
-        else
-            echo -e "${RED}Falha ao instalar $cmd${NC}"
-            return 1
-        fi
-    fi
-    return 0
 }
 
 # Função para configurar o firewall
@@ -309,215 +301,32 @@ check_command() {
     fi
 }
 
-echo "🔍 Iniciando verificação do sistema..."
-
-# Verificar e instalar dependências
-check_and_install_dependencies || exit 1
-
-# Verificar e iniciar serviços
-verify_and_start_services || exit 1
-
-# Verificar portas
-echo "🔌 Verificando portas..."
-check_port "80"    # Nginx
-check_port "5432"  # PostgreSQL
-check_port "8000"  # Backend
-check_port "6379"  # Redis
-
-# Verificar diretórios
-echo "📁 Verificando diretórios..."
-check_directory "/opt/taleontracker"
-check_directory "/opt/taleontracker/backend"
-check_directory "/opt/taleontracker/frontend"
-check_directory "/opt/taleontracker/backend/venv"
-
-# Verificar arquivos
-echo "📄 Verificando arquivos..."
-check_file "/opt/taleontracker/backend/main.py"
-check_file "/opt/taleontracker/backend/requirements.txt"
-check_file "/etc/nginx/sites-available/taleontracker"
-check_file "/etc/systemd/system/taleontracker.service"
-
-# Verificar comandos
-echo "🔧 Verificando comandos..."
-check_command "python3"
-check_command "pip"
-check_command "uvicorn"
-check_command "redis-cli"
-
-# Verificar conexão com o banco de dados
-echo "💾 Verificando conexão com o banco de dados..."
-if psql -h localhost -U postgres -d taleontracker -c "SELECT 1" &> /dev/null; then
-    echo "✅ Conexão com o banco de dados OK"
-else
-    echo "❌ Erro na conexão com o banco de dados"
-    exit 1
-fi
-
-# Verificar conexão com o Redis
-echo " Verificando conexão com o Redis..."
-if redis-cli ping &> /dev/null; then
-    echo "✅ Conexão com o Redis OK"
-else
-    echo "❌ Erro na conexão com o Redis"
-    exit 1
-fi
-
-# Verificar API
-echo "🌐 Verificando API..."
-if curl -s http://localhost:8000/api/health &> /dev/null; then
-    echo "✅ API está respondendo"
-else
-    echo "❌ API não está respondendo"
-    exit 1
-fi
-
-echo "✅ Verificação completa! Todos os componentes estão funcionando corretamente."
-
-# Verificar dependências necessárias
-echo -e "${YELLOW}Verificando dependências...${NC}"
-check_command git || exit 1
-check_command python3 || exit 1
-check_command pip3 || exit 1
-check_command node || exit 1
-check_command npm || exit 1
-
-# Atualizar o sistema
-echo -e "${YELLOW}Atualizando o sistema...${NC}"
-apt update
-apt upgrade -y
-
-# Configurar firewall
-setup_firewall
-
-# Limpar instalação anterior
-cleanup_previous_installation
-
-# Criar diretório de instalação
-echo -e "${YELLOW}Criando diretório de instalação...${NC}"
-mkdir -p /opt/taleontracker
-
-# Clonar o repositório
-echo -e "${YELLOW}Clonando repositório...${NC}"
-git clone https://github.com/canetex/TaleonTracker.git /opt/taleontracker
-
-# Dar permissões necessárias
-echo -e "${YELLOW}Configurando permissões...${NC}"
-chmod +x /opt/taleontracker/*.sh
-
-# Navegar até o diretório
-cd /opt/taleontracker
-
-# Configurar PostgreSQL
-setup_postgresql
-
-# Executar script de configuração do LXC
-echo -e "${YELLOW}Configurando ambiente LXC...${NC}"
-./setup_lxc.sh
-
-# Executar script de deploy
-echo -e "${YELLOW}Iniciando deploy da aplicação...${NC}"
-./deploy_taleontracker.sh
-
-# Verificar serviços
-verify_services
-
-# Obter IP da máquina
-IP_ADDRESS=$(hostname -I | awk '{print $1}')
-
-echo -e "${GREEN}Configuração completa!${NC}"
-echo -e "${GREEN}O TaleonTracker está disponível em:${NC}"
-echo -e "Frontend: http://$IP_ADDRESS"
-echo -e "Frontend Dev Server: http://$IP_ADDRESS:3000"
-echo -e "Backend API: http://$IP_ADDRESS:8000"
-echo -e "${YELLOW}Para verificar o status dos serviços:${NC}"
-echo "sudo systemctl status postgresql"
-echo "sudo systemctl status taleontracker"
-echo "sudo systemctl status nginx"
-echo -e "${YELLOW}Para verificar os logs:${NC}"
-echo "sudo journalctl -u taleontracker"
-echo "sudo journalctl -u nginx"
-
-# Função para configurar arquivos de ambiente
-setup_env_files() {
-    log "Configurando arquivos de ambiente" "INFO"
+# Função para verificar e iniciar o backend
+verify_and_start_backend() {
+    log "Verificando e iniciando backend..." "INFO"
     
-    # Gerar senhas e chaves
-    local db_password=$(openssl rand -base64 12)
-    local redis_password=$(openssl rand -base64 12)
-    local secret_key=$(openssl rand -base64 32)
-    local jwt_secret=$(openssl rand -base64 32)
-    
-    # Configurar backend
-    if [ -f "${APP_DIR}/backend/.env.template" ]; then
-        cp "${APP_DIR}/backend/.env.template" "${APP_DIR}/backend/.env"
-        sed -i "s/your_password_here/${db_password}/g" "${APP_DIR}/backend/.env"
-        sed -i "s/your_redis_password_here/${redis_password}/g" "${APP_DIR}/backend/.env"
-        sed -i "s/your_secret_key_here/${secret_key}/g" "${APP_DIR}/backend/.env"
-        sed -i "s/your_jwt_secret_here/${jwt_secret}/g" "${APP_DIR}/backend/.env"
-        chmod 600 "${APP_DIR}/backend/.env"
-    else
-        log "Template .env do backend não encontrado" "ERROR"
-        return 1
-    fi
-    
-    # Configurar frontend
-    if [ -f "${APP_DIR}/frontend/.env.template" ]; then
-        cp "${APP_DIR}/frontend/.env.template" "${APP_DIR}/frontend/.env"
-        sed -i "s/your_api_url_here/http:\/\/localhost:${BACKEND_PORT}/g" "${APP_DIR}/frontend/.env"
-        chmod 600 "${APP_DIR}/frontend/.env"
-    else
-        log "Template .env do frontend não encontrado" "ERROR"
-        return 1
-    fi
-    
-    # Salvar senhas em arquivo seguro
-    mkdir -p /etc/taleontracker
-    cat > /etc/taleontracker/.passwords << EOF
-DB_PASSWORD=${db_password}
-REDIS_PASSWORD=${redis_password}
-SECRET_KEY=${secret_key}
-JWT_SECRET=${jwt_secret}
-EOF
-    chmod 600 /etc/taleontracker/.passwords
-    
-    log "Arquivos de ambiente configurados com sucesso" "INFO"
-    return 0
-}
-
-# Função para executar scripts de instalação
-run_install_scripts() {
-    local scripts_dir="${APP_DIR}/scripts/install"
-    
-    # Verificar se o diretório existe
-    if [ ! -d "$scripts_dir" ]; then
-        log "Diretório de scripts não encontrado: $scripts_dir" "ERROR"
-        return 1
-    fi
-    
-    # Executar scripts na ordem correta
-    local scripts=(
-        "setup_postgresql.sh"
-        "setup_database.sh"
-        "setup_backend_service.sh"
-        "setup_frontend_service.sh"
-        "setup_lxc.sh"
-    )
-    
-    for script in "${scripts[@]}"; do
-        local script_path="${scripts_dir}/${script}"
-        if [ -f "$script_path" ]; then
-            log "Executando script: $script" "INFO"
-            chmod +x "$script_path"
-            "$script_path" || {
-                log "Falha ao executar script: $script" "ERROR"
+    # Verificar se o backend está rodando
+    if ! systemctl is-active --quiet taleontracker-backend; then
+        log "Backend não está rodando" "WARNING"
+        log "Tentando iniciar backend..." "INFO"
+        
+        # Verificar se o serviço está habilitado
+        if ! systemctl is-enabled --quiet taleontracker-backend; then
+            log "Habilitando serviço taleontracker-backend..." "INFO"
+            systemctl enable taleontracker-backend || {
+                log "Falha ao habilitar serviço taleontracker-backend" "ERROR"
                 return 1
             }
-        else
-            log "Script não encontrado: $script" "ERROR"
-            return 1
         fi
-    done
+        
+        # Tentar iniciar o serviço
+        systemctl start taleontracker-backend || {
+            log "Falha ao iniciar backend" "ERROR"
+            return 1
+        }
+    else
+        log "Backend está rodando" "INFO"
+    fi
     
     return 0
 }
