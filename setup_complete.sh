@@ -207,12 +207,11 @@ check_command() {
 
 echo "🔍 Iniciando verificação do sistema..."
 
-# Verificar serviços
-echo "📡 Verificando serviços..."
-check_service "postgresql"
-check_service "nginx"
-check_service "redis-server"
-check_service "taleontracker"
+# Verificar e instalar dependências
+check_and_install_dependencies || exit 1
+
+# Verificar e iniciar serviços
+verify_and_start_services || exit 1
 
 # Verificar portas
 echo "🔌 Verificando portas..."
