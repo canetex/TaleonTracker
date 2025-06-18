@@ -183,30 +183,38 @@ setup_firewall() {
 
 # Função para configurar o PostgreSQL
 setup_postgresql() {
-    log "Iniciando configuração do PostgreSQL" "INFO"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO] Configurando PostgreSQL..."
     
-    # Gerar senha aleatória
-    DB_PASSWORD=$(openssl rand -base64 12)
-    
-    # Remover banco e usuário existentes
-    sudo -u postgres psql -c "DROP DATABASE IF EXISTS ${DB_NAME};"
-    sudo -u postgres psql -c "DROP ROLE IF EXISTS ${DB_USER};"
-    
-    # Criar usuário e banco
-    sudo -u postgres psql -c "CREATE USER ${DB_USER} WITH PASSWORD '${DB_PASSWORD}';"
-    sudo -u postgres psql -c "CREATE DATABASE ${DB_NAME} OWNER ${DB_USER};"
-    
-    # Conceder privilégios
-    sudo -u postgres psql -d ${DB_NAME} -c "GRANT ALL PRIVILEGES ON DATABASE ${DB_NAME} TO ${DB_USER};"
-    sudo -u postgres psql -d ${DB_NAME} -c "GRANT ALL PRIVILEGES ON SCHEMA public TO ${DB_USER};"
-    sudo -u postgres psql -d ${DB_NAME} -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO ${DB_USER};"
-    sudo -u postgres psql -d ${DB_NAME} -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO ${DB_USER};"
-    
-    # Salvar senha em arquivo seguro
-    echo "DB_PASSWORD=${DB_PASSWORD}" > /etc/taleontracker/.dbpass
-    chmod 600 /etc/taleontracker/.dbpass
-    
-    log "PostgreSQL configurado com sucesso" "INFO"
+    # Instalar PostgreSQL
+    if ! command -v psql &> /dev/null; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO] Instalando PostgreSQL..."
+        sudo apt-get update
+        sudo apt-get install -y postgresql postgresql-contrib
+    fi
+
+    # Iniciar e habilitar o serviço
+    sudo systemctl enable postgresql
+    sudo systemctl start postgresql
+
+    # Criar usuário e banco de dados
+    sudo -u postgres psql -c "CREATE USER taleon WITH PASSWORD 'taleon123';" || true
+    sudo -u postgres psql -c "CREATE DATABASE taleontracker OWNER taleon;" || true
+    sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE taleontracker TO taleon;" || true
+
+    # Configurar pg_hba.conf
+    sudo tee /etc/postgresql/*/main/pg_hba.conf > /dev/null << EOF
+# TYPE  DATABASE        USER            ADDRESS                 METHOD
+local   all             postgres                                peer
+local   all             all                                     md5
+host    all             all             127.0.0.1/32           md5
+host    all             all             ::1/128                 md5
+host    taleontracker   taleon          127.0.0.1/32           md5
+EOF
+
+    # Reiniciar PostgreSQL para aplicar as alterações
+    sudo systemctl restart postgresql
+
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO] PostgreSQL configurado com sucesso"
 }
 
 # Função para verificar serviços
