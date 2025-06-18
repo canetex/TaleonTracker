@@ -41,6 +41,7 @@ check_and_install_dependencies() {
         "ufw:ufw"
         "certbot:certbot"
         "python3-certbot-nginx:python3-certbot-nginx"
+        "netstat:net-tools"
     )
     
     local missing_deps=()
