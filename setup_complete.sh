@@ -18,6 +18,7 @@ fi
 
 # Criar diretório de logs
 mkdir -p /var/log/taleontracker
+mkdir -p /etc/taleontracker
 
 # Função para verificar se a porta do backend está disponível
 check_backend_port() {
@@ -459,6 +460,26 @@ EOF
     nginx -t && systemctl restart nginx
     
     log "Nginx configurado com sucesso" "INFO"
+}
+
+# Função para configurar o Redis
+setup_redis() {
+    log "Iniciando configuração do Redis" "INFO"
+    
+    # Gerar senha aleatória
+    REDIS_PASSWORD=$(openssl rand -base64 12)
+    
+    # Configurar Redis
+    sed -i "s/# requirepass foobared/requirepass ${REDIS_PASSWORD}/" /etc/redis/redis.conf
+    
+    # Salvar senha em arquivo seguro
+    echo "REDIS_PASSWORD=${REDIS_PASSWORD}" > /etc/taleontracker/.redispass
+    chmod 600 /etc/taleontracker/.redispass
+    
+    # Reiniciar Redis
+    systemctl restart redis-server
+    
+    log "Redis configurado com sucesso" "INFO"
 }
 
 # Função principal de instalação
