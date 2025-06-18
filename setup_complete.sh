@@ -482,6 +482,60 @@ setup_redis() {
     log "Redis configurado com sucesso" "INFO"
 }
 
+# Função para configurar jobs do cron
+setup_cron_jobs() {
+    log "Configurando jobs do cron" "INFO"
+    
+    # Criar arquivo de cron
+    cat > /etc/cron.d/taleontracker << EOF
+# Backup diário do banco de dados
+0 0 * * * root /usr/local/bin/backup_database.sh
+
+# Limpeza de logs antigos
+0 1 * * * root find /var/log/taleontracker -type f -mtime +7 -delete
+
+# Verificação de atualizações
+0 2 * * * root /usr/local/bin/check_updates.sh
+EOF
+
+    # Dar permissão correta ao arquivo
+    chmod 644 /etc/cron.d/taleontracker
+    
+    log "Jobs do cron configurados com sucesso" "INFO"
+}
+
+# Função para configurar o ambiente
+setup_environment() {
+    log "Configurando ambiente..." "INFO"
+    
+    # Criar diretórios necessários
+    mkdir -p /etc/taleontracker
+    mkdir -p /var/log/taleontracker
+    
+    # Configurar backend
+    if [ -f "backend/.env.template" ]; then
+        cp backend/.env.template backend/.env
+        # Substituir valores no .env do backend
+        sed -i "s/DB_NAME=.*/DB_NAME=${DB_NAME}/" backend/.env
+        sed -i "s/DB_USER=.*/DB_USER=${DB_USER}/" backend/.env
+        sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=${DB_PASSWORD}/" backend/.env
+        sed -i "s/REDIS_PASSWORD=.*/REDIS_PASSWORD=${REDIS_PASSWORD}/" backend/.env
+    else
+        log "Arquivo .env.template não encontrado no backend" "WARNING"
+    fi
+    
+    # Configurar frontend
+    if [ -f "frontend/.env.template" ]; then
+        cp frontend/.env.template frontend/.env
+        # Substituir valores no .env do frontend
+        sed -i "s/VITE_API_URL=.*/VITE_API_URL=http:\/\/localhost:${BACKEND_PORT}/" frontend/.env
+    else
+        log "Arquivo .env.template não encontrado no frontend" "WARNING"
+    fi
+    
+    log "Ambiente configurado com sucesso" "INFO"
+}
+
 # Função principal de instalação
 main() {
     log "Iniciando instalação do TaleonTracker" "INFO"
