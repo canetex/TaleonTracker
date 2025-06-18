@@ -19,6 +19,109 @@ fi
 # Criar diretório de logs
 mkdir -p /var/log/taleontracker
 
+# Função para verificar e instalar dependências
+check_and_install_dependencies() {
+    log "Verificando dependências do sistema..." "INFO"
+    
+    local dependencies=(
+        "git:git"
+        "python3:python3"
+        "pip3:python3-pip"
+        "python3-venv:python3-venv"
+        "node:nodejs"
+        "npm:npm"
+        "nginx:nginx"
+        "psql:postgresql"
+        "redis-cli:redis-server"
+        "curl:curl"
+        "wget:wget"
+        "unzip:unzip"
+        "supervisord:supervisor"
+        "cron:cron"
+        "ufw:ufw"
+        "certbot:certbot"
+        "python3-certbot-nginx:python3-certbot-nginx"
+    )
+    
+    local missing_deps=()
+    
+    # Verificar dependências
+    for dep in "${dependencies[@]}"; do
+        IFS=':' read -r cmd package <<< "$dep"
+        if ! command -v "$cmd" &> /dev/null; then
+            log "Dependência não encontrada: $cmd" "WARNING"
+            missing_deps+=("$package")
+        fi
+    done
+    
+    # Se houver dependências faltantes, instalar
+    if [ ${#missing_deps[@]} -gt 0 ]; then
+        log "Instalando dependências faltantes..." "INFO"
+        apt update
+        
+        for package in "${missing_deps[@]}"; do
+            log "Instalando $package..." "INFO"
+            apt install -y "$package" || {
+                log "Falha ao instalar $package" "ERROR"
+                return 1
+            }
+        done
+        
+        log "Todas as dependências foram instaladas" "INFO"
+    else
+        log "Todas as dependências estão instaladas" "INFO"
+    fi
+    
+    return 0
+}
+
+# Função para verificar e iniciar serviços
+verify_and_start_services() {
+    log "Verificando e iniciando serviços..." "INFO"
+    
+    local services=(
+        "nginx"
+        "postgresql"
+        "redis-server"
+        "supervisor"
+    )
+    
+    local failed=0
+    
+    for service in "${services[@]}"; do
+        if ! systemctl is-active --quiet "$service"; then
+            log "Serviço $service não está rodando" "WARNING"
+            log "Tentando iniciar $service..." "INFO"
+            
+            # Verificar se o serviço está habilitado
+            if ! systemctl is-enabled --quiet "$service"; then
+                log "Habilitando serviço $service..." "INFO"
+                systemctl enable "$service" || {
+                    log "Falha ao habilitar $service" "ERROR"
+                    failed=$((failed + 1))
+                    continue
+                }
+            fi
+            
+            # Tentar iniciar o serviço
+            systemctl start "$service" || {
+                log "Falha ao iniciar $service" "ERROR"
+                failed=$((failed + 1))
+            }
+        else
+            log "Serviço $service está rodando" "INFO"
+        fi
+    done
+    
+    if [ $failed -eq 0 ]; then
+        log "Todos os serviços estão rodando" "INFO"
+        return 0
+    else
+        log "Alguns serviços falharam ao iniciar" "ERROR"
+        return 1
+    fi
+}
+
 # Função para verificar se um comando existe
 check_command() {
     local cmd=$1
@@ -416,109 +519,6 @@ run_install_scripts() {
     done
     
     return 0
-}
-
-# Função para verificar e instalar dependências
-check_and_install_dependencies() {
-    log "Verificando dependências do sistema..." "INFO"
-    
-    local dependencies=(
-        "git:git"
-        "python3:python3"
-        "pip3:python3-pip"
-        "python3-venv:python3-venv"
-        "node:nodejs"
-        "npm:npm"
-        "nginx:nginx"
-        "psql:postgresql"
-        "redis-cli:redis-server"
-        "curl:curl"
-        "wget:wget"
-        "unzip:unzip"
-        "supervisord:supervisor"
-        "cron:cron"
-        "ufw:ufw"
-        "certbot:certbot"
-        "python3-certbot-nginx:python3-certbot-nginx"
-    )
-    
-    local missing_deps=()
-    
-    # Verificar dependências
-    for dep in "${dependencies[@]}"; do
-        IFS=':' read -r cmd package <<< "$dep"
-        if ! command -v "$cmd" &> /dev/null; then
-            log "Dependência não encontrada: $cmd" "WARNING"
-            missing_deps+=("$package")
-        fi
-    done
-    
-    # Se houver dependências faltantes, instalar
-    if [ ${#missing_deps[@]} -gt 0 ]; then
-        log "Instalando dependências faltantes..." "INFO"
-        apt update
-        
-        for package in "${missing_deps[@]}"; do
-            log "Instalando $package..." "INFO"
-            apt install -y "$package" || {
-                log "Falha ao instalar $package" "ERROR"
-                return 1
-            }
-        done
-        
-        log "Todas as dependências foram instaladas" "INFO"
-    else
-        log "Todas as dependências estão instaladas" "INFO"
-    fi
-    
-    return 0
-}
-
-# Função para verificar e iniciar serviços
-verify_and_start_services() {
-    log "Verificando e iniciando serviços..." "INFO"
-    
-    local services=(
-        "nginx"
-        "postgresql"
-        "redis-server"
-        "supervisor"
-    )
-    
-    local failed=0
-    
-    for service in "${services[@]}"; do
-        if ! systemctl is-active --quiet "$service"; then
-            log "Serviço $service não está rodando" "WARNING"
-            log "Tentando iniciar $service..." "INFO"
-            
-            # Verificar se o serviço está habilitado
-            if ! systemctl is-enabled --quiet "$service"; then
-                log "Habilitando serviço $service..." "INFO"
-                systemctl enable "$service" || {
-                    log "Falha ao habilitar $service" "ERROR"
-                    failed=$((failed + 1))
-                    continue
-                }
-            fi
-            
-            # Tentar iniciar o serviço
-            systemctl start "$service" || {
-                log "Falha ao iniciar $service" "ERROR"
-                failed=$((failed + 1))
-            }
-        else
-            log "Serviço $service está rodando" "INFO"
-        fi
-    done
-    
-    if [ $failed -eq 0 ]; then
-        log "Todos os serviços estão rodando" "INFO"
-        return 0
-    else
-        log "Alguns serviços falharam ao iniciar" "ERROR"
-        return 1
-    fi
 }
 
 # Função principal de instalação
