@@ -568,21 +568,25 @@ clone_repository() {
 
 # Função para configurar o monitoramento
 setup_monitoring() {
-    log_info "Configurando monitoramento..."
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO] Configurando monitoramento..."
+    
+    # Criar diretórios necessários
+    sudo mkdir -p /etc/prometheus
+    sudo mkdir -p /opt/prometheus
     
     # Instalar Prometheus
     if ! command -v prometheus &> /dev/null; then
-        log_info "Instalando Prometheus..."
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO] Instalando Prometheus..."
         wget https://github.com/prometheus/prometheus/releases/download/v2.45.0/prometheus-2.45.0.linux-amd64.tar.gz
         tar xvfz prometheus-*.tar.gz
-        sudo mv prometheus-2.45.0.linux-amd64 /opt/prometheus
+        sudo mv prometheus-2.45.0.linux-amd64/* /opt/prometheus/
         sudo ln -s /opt/prometheus/prometheus /usr/local/bin/
         rm prometheus-*.tar.gz
     fi
 
     # Instalar Node Exporter
     if ! command -v node_exporter &> /dev/null; then
-        log_info "Instalando Node Exporter..."
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO] Instalando Node Exporter..."
         wget https://github.com/prometheus/node_exporter/releases/download/v1.6.1/node_exporter-1.6.1.linux-amd64.tar.gz
         tar xvfz node_exporter-*.tar.gz
         sudo mv node_exporter-1.6.1.linux-amd64/node_exporter /usr/local/bin/
@@ -590,7 +594,7 @@ setup_monitoring() {
     fi
 
     # Configurar Prometheus
-    cat > /etc/prometheus/prometheus.yml << EOF
+    sudo tee /etc/prometheus/prometheus.yml > /dev/null << EOF
 global:
   scrape_interval: 15s
 
@@ -609,7 +613,7 @@ scrape_configs:
 EOF
 
     # Configurar serviços systemd
-    cat > /etc/systemd/system/prometheus.service << EOF
+    sudo tee /etc/systemd/system/prometheus.service > /dev/null << EOF
 [Unit]
 Description=Prometheus
 After=network-online.target
@@ -624,7 +628,7 @@ Restart=always
 WantedBy=multi-user.target
 EOF
 
-    cat > /etc/systemd/system/node_exporter.service << EOF
+    sudo tee /etc/systemd/system/node_exporter.service > /dev/null << EOF
 [Unit]
 Description=Node Exporter
 After=network-online.target
@@ -640,9 +644,8 @@ WantedBy=multi-user.target
 EOF
 
     # Criar usuários e diretórios
-    sudo useradd -rs /bin/false prometheus
-    sudo useradd -rs /bin/false node_exporter
-    sudo mkdir -p /etc/prometheus
+    sudo useradd -rs /bin/false prometheus || true
+    sudo useradd -rs /bin/false node_exporter || true
     sudo chown -R prometheus:prometheus /etc/prometheus
     sudo chown -R prometheus:prometheus /opt/prometheus
 
@@ -653,7 +656,7 @@ EOF
     sudo systemctl start prometheus
     sudo systemctl start node_exporter
 
-    log_info "Monitoramento configurado com sucesso"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO] Monitoramento configurado com sucesso"
 }
 
 # Função principal de instalação
