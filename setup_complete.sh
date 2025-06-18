@@ -355,7 +355,7 @@ else
 fi
 
 # Verificar conexão com o Redis
-echo "�� Verificando conexão com o Redis..."
+echo " Verificando conexão com o Redis..."
 if redis-cli ping &> /dev/null; then
     echo "✅ Conexão com o Redis OK"
 else
