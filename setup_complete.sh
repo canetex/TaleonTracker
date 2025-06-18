@@ -540,6 +540,12 @@ setup_environment() {
 clone_repository() {
     log "Clonando repositório..." "INFO"
     
+    # Verificar se APP_DIR está definido
+    if [ -z "${APP_DIR}" ]; then
+        log "APP_DIR não está definido" "ERROR"
+        return 1
+    fi
+    
     # Se o diretório já existe, fazer backup e remover
     if [ -d "${APP_DIR}" ]; then
         log "Diretório ${APP_DIR} já existe, criando backup..." "WARNING"
@@ -563,6 +569,12 @@ clone_repository() {
 # Função principal de instalação
 main() {
     log "Iniciando instalação do TaleonTracker" "INFO"
+    
+    # Verificar se as variáveis necessárias estão definidas
+    if [ -z "${APP_DIR}" ] || [ -z "${REPO_URL}" ]; then
+        log "Variáveis de configuração não definidas" "ERROR"
+        exit 1
+    fi
     
     # Verificar espaço em disco (mínimo 1GB)
     check_disk_space 1024 || {
