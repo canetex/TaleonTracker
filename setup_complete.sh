@@ -49,7 +49,7 @@ check_and_install_dependencies() {
         "git:git"
         "python3:python3"
         "pip3:python3-pip"
-        "python3-venv:python3-venv"
+        "python3 -m venv --help:python3-venv"
         "node:nodejs"
         "npm:npm"
         "nginx:nginx"
