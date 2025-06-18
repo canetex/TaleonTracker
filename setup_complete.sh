@@ -470,7 +470,7 @@ setup_redis() {
     REDIS_PASSWORD=$(openssl rand -base64 12)
     
     # Configurar Redis
-    sed -i "s/# requirepass foobared/requirepass ${REDIS_PASSWORD}/" /etc/redis/redis.conf
+    sed -i "s|# requirepass foobared|requirepass ${REDIS_PASSWORD}|" /etc/redis/redis.conf
     
     # Salvar senha em arquivo seguro
     echo "REDIS_PASSWORD=${REDIS_PASSWORD}" > /etc/taleontracker/.redispass
@@ -536,6 +536,30 @@ setup_environment() {
     log "Ambiente configurado com sucesso" "INFO"
 }
 
+# Função para clonar o repositório
+clone_repository() {
+    log "Clonando repositório..." "INFO"
+    
+    # Se o diretório já existe, fazer backup e remover
+    if [ -d "${APP_DIR}" ]; then
+        log "Diretório ${APP_DIR} já existe, criando backup..." "WARNING"
+        backup_dir="${APP_DIR}_backup_$(date +%Y%m%d_%H%M%S)"
+        mv "${APP_DIR}" "${backup_dir}" || {
+            log "Falha ao criar backup do diretório existente" "ERROR"
+            return 1
+        }
+    fi
+    
+    # Clonar repositório
+    git clone "${REPO_URL}" "${APP_DIR}" || {
+        log "Falha ao clonar repositório" "ERROR"
+        return 1
+    }
+    
+    log "Repositório clonado com sucesso" "INFO"
+    return 0
+}
+
 # Função principal de instalação
 main() {
     log "Iniciando instalação do TaleonTracker" "INFO"
@@ -566,11 +590,7 @@ main() {
     chown -R www-data:www-data "${APP_DIR}"
     
     # Clonar o repositório
-    log "Clonando repositório..." "INFO"
-    git clone https://github.com/canetex/TaleonTracker.git "${APP_DIR}" || {
-        log "Falha ao clonar repositório" "ERROR"
-        exit 1
-    }
+    clone_repository || exit 1
     
     # Configurar backend
     setup_backend || exit 1
