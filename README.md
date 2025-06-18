@@ -1,6 +1,6 @@
 # TaleonTracker
 
-Sistema de rastreamento de personagens do Taleon Online.
+Sistema de rastreamento e gerenciamento de evolução dos Chars.
 
 ## Descrição
 
@@ -22,12 +22,15 @@ O TaleonTracker é uma aplicação web que monitora automaticamente a evolução
 - Container: Docker
 - Gráficos: Chart.js
 
-## Requisitos
+## Requisitos do Sistema
 
-- Python 3.9+
-- Node.js 16+
-- PostgreSQL 13+
-- Docker e Docker Compose
+- Python 3.8 ou superior
+- Node.js 14 ou superior
+- NPM 6 ou superior
+- PostgreSQL 12 ou superior
+- Redis 6 ou superior
+- 1GB de espaço em disco livre
+- Acesso root para instalação
 
 ## Instalação
 
@@ -37,19 +40,79 @@ git clone https://github.com/canetex/TaleonTracker.git
 cd TaleonTracker
 ```
 
-2. Configure as variáveis de ambiente:
+2. Execute o script de instalação como root:
 ```bash
-cp .env.example .env
-# Edite o arquivo .env com suas configurações
+sudo ./setup_complete.sh
 ```
 
-3. Inicie os containers:
+O script irá:
+- Verificar e instalar dependências necessárias
+- Configurar o firewall
+- Configurar o PostgreSQL com senha aleatória
+- Criar backup da instalação anterior (se existir)
+- Configurar permissões e diretórios
+- Iniciar os serviços necessários
+
+## Arquivos de Configuração
+
+- `config.sh`: Contém todas as variáveis de configuração
+- `utils.sh`: Funções utilitárias reutilizáveis
+- `setup_complete.sh`: Script principal de instalação
+
+## Logs
+
+Os logs de instalação são armazenados em:
+- `/var/log/taleontracker/install.log`
+
+## Segurança
+
+- Senhas são geradas aleatoriamente durante a instalação
+- Arquivos de senha são armazenados com permissões restritas
+- Firewall é configurado automaticamente
+- Verificações de versão e dependências são realizadas
+
+## Backup
+
+Backups são criados automaticamente antes de:
+- Remover instalação anterior
+- Atualizar o sistema
+
+Os backups são armazenados em:
+- `/var/backups/taleontracker/`
+
+## Troubleshooting
+
+Se encontrar problemas durante a instalação:
+
+1. Verifique os logs:
 ```bash
-docker-compose up -d
+cat /var/log/taleontracker/install.log
 ```
 
-4. Acesse a aplicação em `https://seu-dominio:3000`
-   Acesse o backend em `https://seu-dominio:8000`
+2. Verifique o status dos serviços:
+```bash
+sudo systemctl status taleontracker
+sudo systemctl status postgresql
+sudo systemctl status nginx
+```
+
+3. Verifique as permissões:
+```bash
+ls -la /opt/taleontracker
+ls -la /etc/taleontracker
+```
+
+## Contribuindo
+
+1. Faça um fork do projeto
+2. Crie uma branch para sua feature (`git checkout -b feature/nova-feature`)
+3. Commit suas mudanças (`git commit -am 'Adiciona nova feature'`)
+4. Push para a branch (`git push origin feature/nova-feature`)
+5. Crie um Pull Request
+
+## Licença
+
+Este projeto está licenciado sob a licença MIT - veja o arquivo [LICENSE](LICENSE) para detalhes.
 
 ## Estrutura do Projeto
 
@@ -61,18 +124,6 @@ TaleonTracker/
 ├── docker/           # Configurações Docker
 └── docs/            # Documentação
 ```
-
-## Contribuição
-
-1. Faça um fork do projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/nova-feature`)
-3. Commit suas mudanças (`git commit -m 'Adiciona nova feature'`)
-4. Push para a branch (`git push origin feature/nova-feature`)
-5. Abra um Pull Request
-
-## Licença
-
-Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes. 
 
 ## Desenvolvimento
 

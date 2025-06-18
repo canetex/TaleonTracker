@@ -52,3 +52,12 @@ logs/
 # Docker
 .docker/
 *.pid 
+
+# Arquivos de ambiente
+.env
+.env.*
+!.env.template
+
+# Arquivos de senha
+/etc/taleontracker/.passwords
+/etc/taleontracker/.dbpass
