@@ -566,6 +566,96 @@ clone_repository() {
     return 0
 }
 
+# Função para configurar o monitoramento
+setup_monitoring() {
+    log_info "Configurando monitoramento..."
+    
+    # Instalar Prometheus
+    if ! command -v prometheus &> /dev/null; then
+        log_info "Instalando Prometheus..."
+        wget https://github.com/prometheus/prometheus/releases/download/v2.45.0/prometheus-2.45.0.linux-amd64.tar.gz
+        tar xvfz prometheus-*.tar.gz
+        sudo mv prometheus-2.45.0.linux-amd64 /opt/prometheus
+        sudo ln -s /opt/prometheus/prometheus /usr/local/bin/
+        rm prometheus-*.tar.gz
+    fi
+
+    # Instalar Node Exporter
+    if ! command -v node_exporter &> /dev/null; then
+        log_info "Instalando Node Exporter..."
+        wget https://github.com/prometheus/node_exporter/releases/download/v1.6.1/node_exporter-1.6.1.linux-amd64.tar.gz
+        tar xvfz node_exporter-*.tar.gz
+        sudo mv node_exporter-1.6.1.linux-amd64/node_exporter /usr/local/bin/
+        rm -rf node_exporter-*
+    fi
+
+    # Configurar Prometheus
+    cat > /etc/prometheus/prometheus.yml << EOF
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'node'
+    static_configs:
+      - targets: ['localhost:9100']
+
+  - job_name: 'taleontracker'
+    static_configs:
+      - targets: ['localhost:8000']
+EOF
+
+    # Configurar serviços systemd
+    cat > /etc/systemd/system/prometheus.service << EOF
+[Unit]
+Description=Prometheus
+After=network-online.target
+
+[Service]
+User=prometheus
+Group=prometheus
+ExecStart=/usr/local/bin/prometheus --config.file=/etc/prometheus/prometheus.yml
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    cat > /etc/systemd/system/node_exporter.service << EOF
+[Unit]
+Description=Node Exporter
+After=network-online.target
+
+[Service]
+User=node_exporter
+Group=node_exporter
+ExecStart=/usr/local/bin/node_exporter
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    # Criar usuários e diretórios
+    sudo useradd -rs /bin/false prometheus
+    sudo useradd -rs /bin/false node_exporter
+    sudo mkdir -p /etc/prometheus
+    sudo chown -R prometheus:prometheus /etc/prometheus
+    sudo chown -R prometheus:prometheus /opt/prometheus
+
+    # Iniciar e habilitar serviços
+    sudo systemctl daemon-reload
+    sudo systemctl enable prometheus
+    sudo systemctl enable node_exporter
+    sudo systemctl start prometheus
+    sudo systemctl start node_exporter
+
+    log_info "Monitoramento configurado com sucesso"
+}
+
 # Função principal de instalação
 main() {
     log "Iniciando instalação do TaleonTracker" "INFO"
