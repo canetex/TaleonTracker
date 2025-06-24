@@ -39,7 +39,7 @@ def init_db():
             history_exists = result.scalar()
 
             if history_exists:
-                # Verificar se a coluna deaths existe
+                # Verificar se as colunas existem
                 result = conn.execute(text("""
                     SELECT column_name 
                     FROM information_schema.columns 
@@ -52,6 +52,12 @@ def init_db():
                     conn.execute(text("ALTER TABLE character_history ADD COLUMN deaths INTEGER DEFAULT 0"))
                     # Atualizar registros existentes
                     conn.execute(text("UPDATE character_history SET deaths = 0 WHERE deaths IS NULL"))
+                
+                # Adicionar coluna daily_experience se não existir
+                if 'daily_experience' not in history_columns:
+                    conn.execute(text("ALTER TABLE character_history ADD COLUMN daily_experience FLOAT DEFAULT 0"))
+                    # Atualizar registros existentes
+                    conn.execute(text("UPDATE character_history SET daily_experience = 0 WHERE daily_experience IS NULL"))
 
             conn.commit()
 

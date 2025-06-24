@@ -9,19 +9,14 @@ import {
   Grid,
   Typography,
   CircularProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
   Container,
   Alert,
 } from '@mui/material';
-import { Add as AddIcon, Refresh as RefreshIcon } from '@mui/icons-material';
+import { Refresh as RefreshIcon } from '@mui/icons-material';
 
-import { api, updateCharacterData } from '../services/api';
-import { Character } from '../types/character';
-import { formatNumber } from '../utils/format';
+import { getCharacters, updateCharacter } from '../services/api';
+import type { Character } from '../types';
+import { formatNumber, formatDate } from '../utils/format';
 import AddCharacterForm from '../components/AddCharacterForm';
 
 const CharacterList: React.FC = () => {
@@ -29,8 +24,6 @@ const CharacterList: React.FC = () => {
   const [characters, setCharacters] = useState<Character[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [newCharacterName, setNewCharacterName] = useState('');
   const [updatingId, setUpdatingId] = useState<number | null>(null);
 
   const fetchCharacters = async () => {
@@ -38,15 +31,13 @@ const CharacterList: React.FC = () => {
       setLoading(true);
       console.log('Buscando lista de personagens...');
       
-      const response = await fetch('http://192.168.1.200:8000/api/characters/');
-      console.log('Resposta da lista:', response);
-      
-      const data = await response.json();
+      const data = await getCharacters();
       console.log('Dados da lista:', data);
       
       setCharacters(data);
     } catch (error) {
       console.error('Erro ao buscar personagens:', error);
+      setError('Erro ao buscar lista de personagens');
     } finally {
       setLoading(false);
     }
@@ -58,23 +49,10 @@ const CharacterList: React.FC = () => {
 
   const handleAddCharacter = async () => {
     try {
-      console.log('Enviando dados:', { name: newCharacterName });
-      const response = await api.post('/api/characters/', { name: newCharacterName });
-      console.log('Resposta:', response.data);
-      setOpenDialog(false);
-      setNewCharacterName('');
       await fetchCharacters();
     } catch (err: any) {
-      console.error('Erro detalhado:', err);
-      let errorMessage = 'Erro ao adicionar personagem';
-      
-      if (err.response?.data?.detail) {
-        errorMessage = err.response.data.detail;
-      } else if (err.message) {
-        errorMessage = err.message;
-      }
-      
-      setError(errorMessage);
+      console.error('Erro ao atualizar lista:', err);
+      setError('Erro ao atualizar lista de personagens');
     }
   };
 
@@ -83,7 +61,7 @@ const CharacterList: React.FC = () => {
       setUpdatingId(id);
       console.log('Iniciando atualização do personagem:', id);
       
-      const response = await updateCharacterData(id);
+      const response = await updateCharacter(id, {});
       console.log('Resposta recebida:', response);
       
       if (response) {
@@ -93,6 +71,7 @@ const CharacterList: React.FC = () => {
       }
     } catch (error) {
       console.error('Erro ao atualizar personagem:', error);
+      setError('Erro ao atualizar personagem');
     } finally {
       setUpdatingId(null);
     }
@@ -127,20 +106,9 @@ const CharacterList: React.FC = () => {
           <Grid item xs={12} sm={6} md={4} key={character.id}>
             <Card>
               <CardContent>
-                <Box display="flex" alignItems="center" mb={1}>
-                  {character.outfit && (
-                    <Box mr={1}>
-                      <img 
-                        src={character.outfit} 
-                        alt={`${character.name} outfit`}
-                        style={{ width: 32, height: 32 }}
-                      />
-                    </Box>
-                  )}
-                  <Typography variant="h6" component="div">
-                    {character.name}
-                  </Typography>
-                </Box>
+                <Typography variant="h6" component="div">
+                  {character.name}
+                </Typography>
                 <Typography color="textSecondary" gutterBottom>
                   Nível: {formatNumber(character.level)}
                 </Typography>
@@ -148,16 +116,16 @@ const CharacterList: React.FC = () => {
                   Vocação: {character.vocation}
                 </Typography>
                 <Typography color="textSecondary" gutterBottom>
-                  Cidade: {character.world}
+                  Mundo: {character.world}
                 </Typography>
                 <Typography color="textSecondary" gutterBottom>
                   Experiência: {formatNumber(character.experience)}
                 </Typography>
                 <Typography color="textSecondary" gutterBottom>
-                  Mortes: {character.deaths}
+                  Experiência Diária: {formatNumber(character.daily_experience)}
                 </Typography>
                 <Typography variant="body2" color="textSecondary">
-                  Última atualização: {new Date(character.last_updated).toLocaleString()}
+                  Última atualização: {formatDate(character.last_updated)}
                 </Typography>
               </CardContent>
               <CardActions>
@@ -165,9 +133,10 @@ const CharacterList: React.FC = () => {
                   size="small"
                   color="primary"
                   onClick={() => handleUpdateCharacter(character.id)}
-                  disabled={loading}
+                  disabled={updatingId === character.id}
+                  startIcon={<RefreshIcon />}
                 >
-                  {loading ? "Atualizando..." : "Atualizar"}
+                  {updatingId === character.id ? "Atualizando..." : "Atualizar"}
                 </Button>
               </CardActions>
             </Card>

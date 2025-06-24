@@ -5,6 +5,7 @@ from typing import List, Optional
 class CharacterHistoryBase(BaseModel):
     level: int
     experience: float
+    daily_experience: float = 0
     deaths: int
     timestamp: datetime
 
