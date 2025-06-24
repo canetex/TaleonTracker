@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Carregar configurações e funções
-source scripts/config.sh
-source scripts/utils.sh
+source scripts/install/config.sh
+source utils.sh
 
 # Cores para output
 RED='\033[0;31m'
