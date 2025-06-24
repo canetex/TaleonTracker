@@ -9,6 +9,7 @@ class CharacterHistory(Base):
     character_id = Column(Integer, ForeignKey("characters.id"))
     level = Column(Integer)
     experience = Column(Float)
+    daily_experience = Column(Float, default=0)
     deaths = Column(Integer, default=0)
     timestamp = Column(DateTime)
     

@@ -20,8 +20,9 @@ def schedule_daily_scrape(scheduler: BackgroundScheduler):
             minute=1,
             id='daily_scrape',
             name='Atualização diária dos personagens',
-            replace_existing=True
+            replace_existing=True,
+            timezone='America/Sao_Paulo'  # Definindo o timezone para Brasil
         )
-        logger.info("Agendamento diário configurado com sucesso")
+        logger.info("Agendamento diário configurado com sucesso para 00:01 (Brasília)")
     except Exception as e:
         logger.error(f"Erro ao configurar agendamento: {str(e)}") 

@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  Grid,
-  Paper,
-  Typography,
   Box,
-  CircularProgress,
+  Typography,
+  Paper,
+  Grid,
   Button,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
+import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -17,12 +20,8 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import { Line } from 'react-chartjs-2';
-import { Add as AddIcon } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
-
-import { api } from '../services/api';
-import { Character } from '../types';
+import { getCharacters } from '../services/api';
+import { Character, CharacterHistory } from '../types';
 
 ChartJS.register(
   CategoryScale,
@@ -41,25 +40,25 @@ const Dashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await api.get('/api/characters');
-        setCharacters(response.data);
-        setError(null);
-      } catch (err) {
-        setError('Erro ao carregar dados dos personagens');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
+    fetchCharacters();
   }, []);
+
+  const fetchCharacters = async () => {
+    try {
+      setLoading(true);
+      const response = await getCharacters();
+      setCharacters(response);
+      setError(null);
+    } catch (err) {
+      setError('Erro ao carregar dados dos personagens');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
         <CircularProgress />
       </Box>
     );
@@ -67,71 +66,67 @@ const Dashboard: React.FC = () => {
 
   if (error) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <Typography color="error">{error}</Typography>
-      </Box>
-    );
-  }
-
-  if (characters.length === 0) {
-    return (
-      <Box 
-        display="flex" 
-        flexDirection="column" 
-        alignItems="center" 
-        justifyContent="center" 
-        minHeight="60vh"
-        textAlign="center"
-      >
-        <Typography variant="h5" color="textSecondary" gutterBottom>
-          Bem-vindo ao TaleonTracker!
-        </Typography>
-        <Typography variant="h6" color="textSecondary" gutterBottom>
-          Nenhum personagem cadastrado
-        </Typography>
-        <Typography color="textSecondary" mb={3}>
-          Comece adicionando seu primeiro personagem para rastrear seu progresso
-        </Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<AddIcon />}
-          onClick={() => navigate('/characters')}
-        >
-          Adicionar Primeiro Personagem
-        </Button>
+      <Box p={2}>
+        <Alert severity="error">{error}</Alert>
       </Box>
     );
   }
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>
-        Dashboard
-      </Typography>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Typography variant="h4">Dashboard</Typography>
+        <Button variant="contained" color="primary" onClick={() => navigate('/characters/new')}>
+          Adicionar Personagem
+        </Button>
+      </Box>
+
       <Grid container spacing={3}>
         {characters.map((character) => (
           <Grid item xs={12} md={6} key={character.id}>
             <Paper sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                {character.name}
-              </Typography>
-              <Box height={300}>
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                <Typography variant="h6">{character.name}</Typography>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => navigate(`/characters/${character.id}`)}
+                >
+                  Detalhes
+                </Button>
+              </Box>
+
+              <Grid container spacing={2} mb={2}>
+                <Grid item xs={4}>
+                  <Typography variant="subtitle2">Nível</Typography>
+                  <Typography>{character.level}</Typography>
+                </Grid>
+                <Grid item xs={4}>
+                  <Typography variant="subtitle2">Experiência</Typography>
+                  <Typography>{character.experience.toLocaleString()}</Typography>
+                </Grid>
+                <Grid item xs={4}>
+                  <Typography variant="subtitle2">Exp. Diária</Typography>
+                  <Typography>{character.daily_experience.toLocaleString()}</Typography>
+                </Grid>
+              </Grid>
+
+              {character.history && character.history.length > 0 ? (
                 <Line
                   data={{
-                    labels: character.history.map((h) =>
+                    labels: character.history.map((h: CharacterHistory) =>
                       new Date(h.timestamp).toLocaleDateString()
                     ),
                     datasets: [
                       {
                         label: 'Nível',
-                        data: character.history.map((h) => h.level),
+                        data: character.history.map((h: CharacterHistory) => h.level),
                         borderColor: 'rgb(75, 192, 192)',
                         tension: 0.1,
                       },
                       {
                         label: 'Experiência',
-                        data: character.history.map((h) => h.experience),
+                        data: character.history.map((h: CharacterHistory) => h.experience),
                         borderColor: 'rgb(255, 99, 132)',
                         tension: 0.1,
                       },
@@ -139,15 +134,18 @@ const Dashboard: React.FC = () => {
                   }}
                   options={{
                     responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                      y: {
-                        beginAtZero: true,
+                    plugins: {
+                      legend: {
+                        position: 'top' as const,
                       },
                     },
                   }}
                 />
-              </Box>
+              ) : (
+                <Typography variant="body2" color="text.secondary" align="center">
+                  Sem histórico disponível
+                </Typography>
+              )}
             </Paper>
           </Grid>
         ))}
