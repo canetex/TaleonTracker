@@ -362,9 +362,21 @@ setup_backend() {
     
     # Configurar variáveis de ambiente
     if [ ! -f .env ]; then
-        cp .env.template .env
-        sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=${DB_PASSWORD}/" .env
-        sed -i "s/REDIS_PASSWORD=.*/REDIS_PASSWORD=${REDIS_PASSWORD}/" .env
+        if [ -f env.template ]; then
+            cp env.template .env
+            sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=${DB_PASSWORD}/" .env
+            sed -i "s/REDIS_PASSWORD=.*/REDIS_PASSWORD=${REDIS_PASSWORD}/" .env
+        else
+            log "Arquivo env.template não encontrado, criando .env básico" "WARNING"
+            echo "DB_NAME=${DB_NAME}" > .env
+            echo "DB_USER=${DB_USER}" >> .env
+            echo "DB_PASSWORD=${DB_PASSWORD}" >> .env
+            echo "DB_HOST=${DB_HOST}" >> .env
+            echo "DB_PORT=${DB_PORT}" >> .env
+            echo "REDIS_HOST=${REDIS_HOST}" >> .env
+            echo "REDIS_PORT=${REDIS_PORT}" >> .env
+            echo "REDIS_PASSWORD=${REDIS_PASSWORD}" >> .env
+        fi
     fi
     
     # Configurar serviço systemd
@@ -402,9 +414,12 @@ setup_frontend() {
     npm install
     
     # Configurar variáveis de ambiente
-    if [ ! -f .env ]; then
-        cp .env.template .env
-        sed -i "s/VITE_API_URL=.*/VITE_API_URL=http:\/\/localhost:${BACKEND_PORT}/" .env
+    if [ -f "frontend/env.template" ]; then
+        cp frontend/env.template frontend/.env
+        # Substituir valores no .env do frontend
+        sed -i "s/REACT_APP_API_URL=.*/REACT_APP_API_URL=http:\/\/localhost:${BACKEND_PORT}/" frontend/.env
+    else
+        log "Arquivo env.template não encontrado no frontend" "WARNING"
     fi
     
     # Configurar serviço systemd
@@ -521,24 +536,24 @@ setup_environment() {
     mkdir -p /var/log/taleontracker
     
     # Configurar backend
-    if [ -f "backend/.env.template" ]; then
-        cp backend/.env.template backend/.env
+    if [ -f "backend/env.template" ]; then
+        cp backend/env.template backend/.env
         # Substituir valores no .env do backend
         sed -i "s/DB_NAME=.*/DB_NAME=${DB_NAME}/" backend/.env
         sed -i "s/DB_USER=.*/DB_USER=${DB_USER}/" backend/.env
         sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=${DB_PASSWORD}/" backend/.env
         sed -i "s/REDIS_PASSWORD=.*/REDIS_PASSWORD=${REDIS_PASSWORD}/" backend/.env
     else
-        log "Arquivo .env.template não encontrado no backend" "WARNING"
+        log "Arquivo env.template não encontrado no backend" "WARNING"
     fi
     
     # Configurar frontend
-    if [ -f "frontend/.env.template" ]; then
-        cp frontend/.env.template frontend/.env
+    if [ -f "frontend/env.template" ]; then
+        cp frontend/env.template frontend/.env
         # Substituir valores no .env do frontend
-        sed -i "s/VITE_API_URL=.*/VITE_API_URL=http:\/\/localhost:${BACKEND_PORT}/" frontend/.env
+        sed -i "s/REACT_APP_API_URL=.*/REACT_APP_API_URL=http:\/\/localhost:${BACKEND_PORT}/" frontend/.env
     else
-        log "Arquivo .env.template não encontrado no frontend" "WARNING"
+        log "Arquivo env.template não encontrado no frontend" "WARNING"
     fi
     
     log "Ambiente configurado com sucesso" "INFO"
@@ -726,7 +741,7 @@ main() {
     log "Instalação concluída com sucesso" "INFO"
     
     # Mostrar informações de acesso
-    IP_ADDRESS=$(get_machine_ip)
+    IP_ADDRESS=$(hostname -I | awk '{print $1}')
     echo -e "${GREEN}Configuração completa!${NC}"
     echo -e "${GREEN}O TaleonTracker está disponível em:${NC}"
     echo -e "Frontend: http://$IP_ADDRESS"

@@ -23,6 +23,9 @@ NGINX_SITE_ENABLED="/etc/nginx/sites-enabled/taleontracker"
 SERVICE_NAME="taleontracker"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 
+# URL do repositório
+REPO_URL="https://github.com/seu-usuario/TaleonTracker.git"
+
 # Versões mínimas requeridas
 MIN_PYTHON_VERSION="3.8"
 MIN_NODE_VERSION="14"
@@ -33,5 +36,3 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
-
-REPO_URL="https://github.com/canetex/TaleonTracker"
