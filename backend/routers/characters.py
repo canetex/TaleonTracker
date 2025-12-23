@@ -6,7 +6,7 @@ from database import get_db, engine
 from models.character import Character
 from models.character_history import CharacterHistory
 from schemas.character import CharacterCreate, CharacterResponse
-from services.scraper import scrape_character_data
+from services.scraper import scrape_character_data, update_all_characters
 import logging
 
 router = APIRouter()
@@ -188,4 +188,20 @@ async def delete_character(character_id: int, db: Session = Depends(get_db)):
         raise
     except Exception as e:
         logger.error(f"Erro ao excluir personagem: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/update-all")
+async def update_all_characters_endpoint():
+    """
+    Atualiza todos os personagens cadastrados.
+    Executa o scraper completo para buscar as últimas atualizações.
+    """
+    try:
+        import asyncio
+        logger.info("Iniciando atualização completa de todos os personagens")
+        # Executa em background para não bloquear a resposta
+        asyncio.create_task(update_all_characters())
+        return {"message": "Atualização de todos os personagens iniciada em background"}
+    except Exception as e:
+        logger.error(f"Erro ao iniciar atualização completa: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
