@@ -3,7 +3,6 @@ Serviço para download e salvamento de outfits de personagens
 Complexidade: O(1) - download de arquivo único
 """
 import aiohttp
-import aiofiles
 import os
 from pathlib import Path
 from urllib.parse import urlparse
@@ -62,9 +61,9 @@ async def download_outfit(outfit_url: str, character_id: int, world: str) -> str
                 response.raise_for_status()
                 content = await response.read()
                 
-                # Salva o arquivo
-                async with aiofiles.open(local_path, 'wb') as f:
-                    await f.write(content)
+                # Salva o arquivo (usa modo síncrono para compatibilidade)
+                with open(local_path, 'wb') as f:
+                    f.write(content)
                 
                 logger.info(f"Outfit salvo em {local_path}")
                 return f"/static/outfits/{local_filename}"
