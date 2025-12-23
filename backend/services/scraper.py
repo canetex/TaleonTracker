@@ -5,6 +5,7 @@ from models.character import Character
 from models.character_history import CharacterHistory
 from datetime import datetime
 from urllib.parse import quote
+from typing import Tuple
 import re
 import logging
 import time
@@ -27,7 +28,7 @@ TALEON_WORLDS = {
 TALEON_BASE_URL = TALEON_WORLDS["San"]  # Padrão: San
 
 @cache(expire=300)  # Cache por 5 minutos
-async def get_character_html(character_name: str, world: str = None) -> tuple[str, str]:
+async def get_character_html(character_name: str, world: str = None) -> Tuple[str, str]:
     """
     Obtém o HTML do perfil do personagem com cache
     Retorna (html_content, world_detected)
