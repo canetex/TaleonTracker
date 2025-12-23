@@ -109,7 +109,7 @@ const CharacterDetail: React.FC = () => {
               <Box display="flex" alignItems="center" gap={2}>
                 {character.outfit && (
                   <img 
-                    src={character.outfit.startsWith('http') ? character.outfit : `https://san.taleon.online${character.outfit}`}
+                    src={character.outfit.startsWith('http') ? character.outfit : `https://${character.world === 'aura' ? 'aura' : 'san'}.taleon.online${character.outfit}`}
                     alt={`${character.name} outfit`}
                     style={{ width: 64, height: 64 }}
                     onError={(e) => {

@@ -179,7 +179,7 @@ const CharacterList: React.FC = () => {
                 <Box display="flex" alignItems="center" gap={2} mb={1}>
                   {character.outfit && (
                     <img 
-                      src={character.outfit.startsWith('http') ? character.outfit : `https://san.taleon.online${character.outfit}`}
+                      src={character.outfit.startsWith('http') ? character.outfit : `https://${character.world === 'aura' ? 'aura' : 'san'}.taleon.online${character.outfit}`}
                       alt={`${character.name} outfit`}
                       style={{ width: 48, height: 48 }}
                       onError={(e) => {

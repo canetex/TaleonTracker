@@ -78,6 +78,7 @@ const WorldStats: React.FC = () => {
   const [daysFilter, setDaysFilter] = useState<number>(30);
   const [rankingDays, setRankingDays] = useState<number>(30);
   const [ranking, setRanking] = useState<any[]>([]);
+  const [rankingType, setRankingType] = useState<'accumulated' | 'average'>('accumulated');
 
   useEffect(() => {
     fetchWorlds();
@@ -91,7 +92,7 @@ const WorldStats: React.FC = () => {
 
   useEffect(() => {
     fetchRanking();
-  }, [rankingDays, selectedWorld]);
+  }, [rankingDays, selectedWorld, rankingType]);
 
   const fetchWorlds = async () => {
     try {
@@ -132,7 +133,8 @@ const WorldStats: React.FC = () => {
     try {
       const daysParam = rankingDays > 0 ? `&days=${rankingDays}` : '&days=0';
       const worldParam = selectedWorld ? `&world=${selectedWorld}` : '';
-      const response = await api.get<any[]>(`/ranking/experience?limit=20${daysParam}${worldParam}`);
+      const typeParam = `&type=${rankingType}`;
+      const response = await api.get<any[]>(`/ranking/experience?limit=20${daysParam}${worldParam}${typeParam}`);
       setRanking(response.data);
     } catch (err) {
       console.error('Erro ao carregar ranking:', err);
@@ -155,36 +157,20 @@ const WorldStats: React.FC = () => {
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
         <Typography variant="h4">Estatísticas do Servidor/Mundo</Typography>
-        <Box display="flex" gap={2} flexWrap="wrap">
-          <FormControl sx={{ minWidth: 150 }}>
-            <InputLabel>Mundo</InputLabel>
-            <Select
-              value={selectedWorld}
-              onChange={handleWorldChange}
-              label="Mundo"
-            >
-              {worlds.map((world) => (
-                <MenuItem key={world} value={world}>
-                  {world.charAt(0).toUpperCase() + world.slice(1)}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl sx={{ minWidth: 150 }}>
-            <InputLabel>Período</InputLabel>
-            <Select
-              value={daysFilter}
-              onChange={(e) => setDaysFilter(e.target.value as number)}
-              label="Período"
-            >
-              {DAYS_OPTIONS.map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Box>
+        <FormControl sx={{ minWidth: 150 }}>
+          <InputLabel>Mundo</InputLabel>
+          <Select
+            value={selectedWorld}
+            onChange={handleWorldChange}
+            label="Mundo"
+          >
+            {worlds.map((world) => (
+              <MenuItem key={world} value={world}>
+                {world.charAt(0).toUpperCase() + world.slice(1)}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
       </Box>
 
       {error && (
@@ -196,9 +182,25 @@ const WorldStats: React.FC = () => {
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 2 }}>
-            <Typography variant="h6" gutterBottom>
-              Histórico de EXP Total - {selectedWorld}
-            </Typography>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+              <Typography variant="h6">
+                Histórico de EXP Total - {selectedWorld ? selectedWorld.charAt(0).toUpperCase() + selectedWorld.slice(1) : ''}
+              </Typography>
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>Período</InputLabel>
+                <Select
+                  value={daysFilter}
+                  onChange={(e) => setDaysFilter(e.target.value as number)}
+                  label="Período"
+                >
+                  {DAYS_OPTIONS.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
             {loading ? (
               <Box display="flex" justifyContent="center" p={4}>
                 <CircularProgress />
@@ -255,9 +257,25 @@ const WorldStats: React.FC = () => {
 
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 2 }}>
-            <Typography variant="h6" gutterBottom>
-              Histórico de Personagens Ativos - {selectedWorld}
-            </Typography>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+              <Typography variant="h6">
+                Histórico de Personagens Ativos - {selectedWorld ? selectedWorld.charAt(0).toUpperCase() + selectedWorld.slice(1) : ''}
+              </Typography>
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>Período</InputLabel>
+                <Select
+                  value={daysFilter}
+                  onChange={(e) => setDaysFilter(e.target.value as number)}
+                  label="Período"
+                >
+                  {DAYS_OPTIONS.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
             {loading ? (
               <Box display="flex" justifyContent="center" p={4}>
                 <CircularProgress />
@@ -313,24 +331,37 @@ const WorldStats: React.FC = () => {
         {/* Ranking de Experiência */}
         <Grid item xs={12}>
           <Paper sx={{ p: 2 }}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-              <Typography variant="h6" gutterBottom>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={2}>
+              <Typography variant="h6">
                 Ranking de Experiência Histórica
               </Typography>
-              <FormControl sx={{ minWidth: 150 }}>
-                <InputLabel>Período</InputLabel>
-                <Select
-                  value={rankingDays}
-                  onChange={(e) => setRankingDays(e.target.value as number)}
-                  label="Período"
-                >
-                  {DAYS_OPTIONS.map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
-                      {option.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Box display="flex" gap={2} flexWrap="wrap">
+                <FormControl size="small" sx={{ minWidth: 120 }}>
+                  <InputLabel>Tipo</InputLabel>
+                  <Select
+                    value={rankingType}
+                    onChange={(e) => setRankingType(e.target.value as 'accumulated' | 'average')}
+                    label="Tipo"
+                  >
+                    <MenuItem value="accumulated">Acumulada</MenuItem>
+                    <MenuItem value="average">Média</MenuItem>
+                  </Select>
+                </FormControl>
+                <FormControl size="small" sx={{ minWidth: 120 }}>
+                  <InputLabel>Período</InputLabel>
+                  <Select
+                    value={rankingDays}
+                    onChange={(e) => setRankingDays(e.target.value as number)}
+                    label="Período"
+                  >
+                    {DAYS_OPTIONS.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
             </Box>
             {ranking.length > 0 ? (
               <>
@@ -342,7 +373,9 @@ const WorldStats: React.FC = () => {
                         <TableCell>Nome</TableCell>
                         <TableCell>Mundo</TableCell>
                         <TableCell>Vocação</TableCell>
-                        <TableCell align="right">Experiência Máxima</TableCell>
+                        <TableCell align="right">
+                          {rankingType === 'accumulated' ? 'EXP Acumulada' : 'EXP Média'}
+                        </TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -352,7 +385,9 @@ const WorldStats: React.FC = () => {
                           <TableCell>{char.name}</TableCell>
                           <TableCell>{char.world.charAt(0).toUpperCase() + char.world.slice(1)}</TableCell>
                           <TableCell>{char.vocation}</TableCell>
-                          <TableCell align="right">{char.max_experience.toLocaleString()}</TableCell>
+                          <TableCell align="right">
+                            {(rankingType === 'accumulated' ? char.accumulated_experience : char.average_experience || char.max_experience).toLocaleString()}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -364,8 +399,10 @@ const WorldStats: React.FC = () => {
                       labels: ranking.slice(0, 10).map((char) => char.name),
                       datasets: [
                         {
-                          label: 'Experiência Máxima',
-                          data: ranking.slice(0, 10).map((char) => char.max_experience),
+                          label: rankingType === 'accumulated' ? 'EXP Acumulada' : 'EXP Média',
+                          data: ranking.slice(0, 10).map((char) => 
+                            rankingType === 'accumulated' ? char.accumulated_experience : char.average_experience || char.max_experience
+                          ),
                           backgroundColor: 'rgba(75, 192, 192, 0.6)',
                           borderColor: 'rgb(75, 192, 192)',
                           borderWidth: 1,
