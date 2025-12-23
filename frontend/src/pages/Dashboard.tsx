@@ -72,6 +72,15 @@ const Dashboard: React.FC = () => {
     );
   }
 
+  // Calcula estatísticas gerais - O(n) onde n é o número de personagens
+  const totalCharacters = characters.length;
+  const totalExperience = characters.reduce((sum, char) => sum + (char.experience || 0), 0);
+  const totalDailyExperience = characters.reduce((sum, char) => sum + (char.daily_experience || 0), 0);
+  const averageLevel = totalCharacters > 0 
+    ? Math.round(characters.reduce((sum, char) => sum + (char.level || 0), 0) / totalCharacters)
+    : 0;
+  const worlds = [...new Set(characters.map(char => char.world).filter(Boolean))];
+
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
@@ -80,6 +89,57 @@ const Dashboard: React.FC = () => {
           Adicionar Personagem
         </Button>
       </Box>
+
+      {/* Estatísticas Gerais */}
+      <Grid container spacing={3} mb={3}>
+        <Grid item xs={12} sm={6} md={3}>
+          <Paper sx={{ p: 2, textAlign: 'center' }}>
+            <Typography variant="h6" color="primary">
+              {totalCharacters}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Total de Personagens
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Paper sx={{ p: 2, textAlign: 'center' }}>
+            <Typography variant="h6" color="primary">
+              {averageLevel}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Nível Médio
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Paper sx={{ p: 2, textAlign: 'center' }}>
+            <Typography variant="h6" color="primary">
+              {totalExperience.toLocaleString()}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              EXP Total
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Paper sx={{ p: 2, textAlign: 'center' }}>
+            <Typography variant="h6" color="primary">
+              {totalDailyExperience.toLocaleString()}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              EXP Diária Total
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12}>
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="subtitle1" gutterBottom>
+              Mundos Ativos: {worlds.join(', ') || 'Nenhum'}
+            </Typography>
+          </Paper>
+        </Grid>
+      </Grid>
 
       <Grid container spacing={3}>
         {characters.map((character) => (
@@ -114,19 +174,28 @@ const Dashboard: React.FC = () => {
               {character.history && character.history.length > 0 ? (
                 <Line
                   data={{
-                    labels: character.history.map((h: CharacterHistory) =>
-                      new Date(h.timestamp).toLocaleDateString()
-                    ),
+                    labels: character.history
+                      .slice()
+                      .reverse()
+                      .map((h: CharacterHistory) =>
+                        new Date(h.timestamp).toLocaleDateString()
+                      ),
                     datasets: [
                       {
                         label: 'Nível',
-                        data: character.history.map((h: CharacterHistory) => h.level),
+                        data: character.history
+                          .slice()
+                          .reverse()
+                          .map((h: CharacterHistory) => h.level),
                         borderColor: 'rgb(75, 192, 192)',
                         tension: 0.1,
                       },
                       {
                         label: 'Experiência',
-                        data: character.history.map((h: CharacterHistory) => h.experience),
+                        data: character.history
+                          .slice()
+                          .reverse()
+                          .map((h: CharacterHistory) => h.experience),
                         borderColor: 'rgb(255, 99, 132)',
                         tension: 0.1,
                       },

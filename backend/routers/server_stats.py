@@ -22,11 +22,11 @@ async def get_world_exp_history(world: str, days: int = 30, db: Session = Depend
     try:
         cutoff_date = datetime.utcnow() - timedelta(days=days)
         
-        # Busca estatísticas agregadas por data
+        # Busca estatísticas agregadas por data, ordenadas do mais antigo para o mais recente
         stats = db.query(ServerStats).filter(
             ServerStats.world == world,
             ServerStats.timestamp >= cutoff_date
-        ).order_by(ServerStats.timestamp).all()
+        ).order_by(ServerStats.timestamp.asc()).all()
         
         return stats
     except Exception as e:
@@ -42,11 +42,11 @@ async def get_world_active_history(world: str, days: int = 30, db: Session = Dep
     try:
         cutoff_date = datetime.utcnow() - timedelta(days=days)
         
-        # Busca estatísticas agregadas por data
+        # Busca estatísticas agregadas por data, ordenadas do mais antigo para o mais recente
         stats = db.query(ServerStats).filter(
             ServerStats.world == world,
             ServerStats.timestamp >= cutoff_date
-        ).order_by(ServerStats.timestamp).all()
+        ).order_by(ServerStats.timestamp.asc()).all()
         
         return stats
     except Exception as e:

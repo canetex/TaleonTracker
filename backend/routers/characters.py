@@ -15,22 +15,34 @@ logger = logging.getLogger(__name__)
 def enrich_character_response(character: Character) -> Dict[str, Any]:
     """
     Enriquece a resposta do personagem com dados do histórico mais recente
-    Complexidade: O(1) - busca apenas o histórico mais recente
+    Complexidade: O(m) onde m é o tamanho do histórico
     """
-    latest_history = None
-    if character.history:
-        latest_history = sorted(character.history, key=lambda h: h.timestamp, reverse=True)[0]
+    # Ordena o histórico por timestamp (mais recente primeiro)
+    sorted_history = sorted(character.history, key=lambda h: h.timestamp, reverse=True) if character.history else []
+    latest_history = sorted_history[0] if sorted_history else None
+    previous_history = sorted_history[1] if len(sorted_history) > 1 else None
+    
+    # Calcula experiência diária se houver histórico anterior
+    daily_experience = 0
+    if latest_history and previous_history:
+        # Diferença entre a experiência mais recente e a anterior
+        daily_experience = latest_history.experience - previous_history.experience
+        if daily_experience < 0:
+            daily_experience = 0
+    elif latest_history:
+        # Se não há histórico anterior, usa o valor salvo
+        daily_experience = latest_history.daily_experience or 0
     
     response = {
         "id": character.id,
         "name": character.name,
-        "level": character.level,
+        "level": latest_history.level if latest_history else character.level,
         "vocation": character.vocation,
         "world": character.world,
         "created_at": character.created_at,
         "updated_at": character.updated_at,
         "experience": latest_history.experience if latest_history else 0,
-        "daily_experience": latest_history.daily_experience if latest_history else 0,
+        "daily_experience": daily_experience,
         "last_updated": latest_history.timestamp if latest_history else character.updated_at,
         "history": [
             {
@@ -42,7 +54,7 @@ def enrich_character_response(character: Character) -> Dict[str, Any]:
                 "deaths": h.deaths,
                 "timestamp": h.timestamp
             }
-            for h in sorted(character.history, key=lambda h: h.timestamp, reverse=True)
+            for h in sorted_history
         ]
     }
     return response
