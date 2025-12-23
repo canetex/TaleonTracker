@@ -111,21 +111,17 @@ async def get_experience_ranking(
                 })
         else:
             # Experiência média: SOMA(EXP_POR_DIA) / INTERVALO_DIAS
-            # Calcula experiência ganha por dia e depois faz a média
+            # Calcula a diferença total de experiência no período e divide pelo intervalo
             history_query = db.query(
                 CharacterHistory.character_id,
-                func.date(CharacterHistory.timestamp).label('date'),
-                func.max(CharacterHistory.experience).label('max_exp'),
-                func.min(CharacterHistory.experience).label('min_exp')
+                func.min(CharacterHistory.experience).label('first_exp'),
+                func.max(CharacterHistory.experience).label('last_exp'),
+                func.min(CharacterHistory.timestamp).label('first_date'),
+                func.max(CharacterHistory.timestamp).label('last_date')
             )
             
             if cutoff_date:
                 history_query = history_query.filter(CharacterHistory.timestamp >= cutoff_date)
-            
-            history_query = history_query.group_by(
-                CharacterHistory.character_id,
-                func.date(CharacterHistory.timestamp)
-            )
             
             # Filtra por mundo através do Character
             if isinstance(world_filter, list):
@@ -133,31 +129,28 @@ async def get_experience_ranking(
             else:
                 history_query = history_query.join(Character).filter(Character.world == world_filter)
             
+            history_query = history_query.group_by(CharacterHistory.character_id)
             history_results = history_query.all()
             
-            # Agrupa por personagem e calcula experiência ganha por dia
-            character_daily_exp = {}
-            for row in history_results:
-                char_id = row.character_id
-                date = row.date
-                daily_exp = float(row.max_exp) - float(row.min_exp) if row.max_exp and row.min_exp else 0
-                if char_id not in character_daily_exp:
-                    character_daily_exp[char_id] = {}
-                # Armazena por data para evitar duplicatas (pega o maior valor do dia)
-                if date not in character_daily_exp[char_id] or daily_exp > character_daily_exp[char_id][date]:
-                    character_daily_exp[char_id][date] = daily_exp
-            
-            # Calcula média: SOMA(EXP_POR_DIA) / INTERVALO_DIAS
+            # Calcula experiência média: (ÚLTIMA_EXP - PRIMEIRA_EXP) / INTERVALO_DIAS
             character_avg = {}
             interval_days = days if days > 0 else 1
-            for char_id, daily_exps_dict in character_daily_exp.items():
-                # Soma todas as experiências ganhas por dia
-                total_exp = sum(daily_exps_dict.values())
-                # Divide pelo intervalo de dias solicitado
-                avg_exp = total_exp / interval_days
+            
+            for row in history_results:
+                char_id = row.character_id
+                first_exp = float(row.first_exp) if row.first_exp else 0
+                last_exp = float(row.last_exp) if row.last_exp else 0
+                
+                # Calcula experiência total ganha no período
+                total_exp_gained = last_exp - first_exp
+                if total_exp_gained < 0:
+                    total_exp_gained = 0  # Se a experiência diminuiu (morte), considera 0
+                
+                # Calcula média: experiência total / intervalo de dias
+                avg_exp = total_exp_gained / interval_days
                 character_avg[char_id] = avg_exp
             
-            # Busca informações dos personagens
+            # Busca informações dos personagens e última atualização
             char_ids = list(character_avg.keys())
             if not char_ids:
                 return []
@@ -165,14 +158,15 @@ async def get_experience_ranking(
             characters = db.query(Character).filter(Character.id.in_(char_ids)).all()
             char_info = {char.id: char for char in characters}
             
-            # Busca última atualização
-            last_updates = {}
-            for char_id in char_ids:
-                last_history = db.query(CharacterHistory).filter(
-                    CharacterHistory.character_id == char_id
-                ).order_by(CharacterHistory.timestamp.desc()).first()
-                if last_history:
-                    last_updates[char_id] = last_history.timestamp
+            # Busca última atualização de uma vez
+            last_updates_query = db.query(
+                CharacterHistory.character_id,
+                func.max(CharacterHistory.timestamp).label('last_update')
+            ).filter(
+                CharacterHistory.character_id.in_(char_ids)
+            ).group_by(CharacterHistory.character_id)
+            
+            last_updates = {row.character_id: row.last_update for row in last_updates_query.all()}
             
             # Monta ranking
             ranking_data = []
