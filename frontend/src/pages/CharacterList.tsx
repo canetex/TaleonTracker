@@ -90,6 +90,13 @@ const CharacterList: React.FC = () => {
     });
   }, [characters, searchTerm, worldFilter]);
 
+  // Calcula estatísticas gerais - O(n) onde n é o número de personagens
+  const totalCharacters = characters.length;
+  const totalDailyExperience = characters.reduce((sum, char) => sum + (char.daily_experience || 0), 0);
+  const averageLevel = totalCharacters > 0 
+    ? Math.round(characters.reduce((sum, char) => sum + (char.level || 0), 0) / totalCharacters)
+    : 0;
+
   const handleAddCharacter = async () => {
     try {
       await fetchCharacters();

@@ -49,9 +49,9 @@ export const deleteCharacter = async (id: number): Promise<void> => {
   }
 };
 
-export const getCharacterHistory = async (id: number): Promise<Character> => {
+export const getCharacterHistory = async (id: number, days: number = 0): Promise<Character> => {
   try {
-    const response = await api.get<Character>(`/characters/${id}`);
+    const response = await api.get<Character>(`/characters/${id}?days=${days}`);
     return response.data;
   } catch (error) {
     const apiError = error as ApiError;
