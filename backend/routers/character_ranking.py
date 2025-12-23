@@ -135,20 +135,25 @@ async def get_experience_ranking(
             
             history_results = history_query.all()
             
-            # Agrupa por personagem e calcula experiência média diária
+            # Agrupa por personagem e calcula experiência ganha por dia
             character_daily_exp = {}
             for row in history_results:
                 char_id = row.character_id
+                date = row.date
                 daily_exp = float(row.max_exp) - float(row.min_exp) if row.max_exp and row.min_exp else 0
                 if char_id not in character_daily_exp:
-                    character_daily_exp[char_id] = []
-                character_daily_exp[char_id].append(daily_exp)
+                    character_daily_exp[char_id] = {}
+                # Armazena por data para evitar duplicatas (pega o maior valor do dia)
+                if date not in character_daily_exp[char_id] or daily_exp > character_daily_exp[char_id][date]:
+                    character_daily_exp[char_id][date] = daily_exp
             
-            # Calcula média: soma de exp por dia / número de dias
+            # Calcula média: SOMA(EXP_POR_DIA) / INTERVALO_DIAS
             character_avg = {}
             interval_days = days if days > 0 else 1
-            for char_id, daily_exps in character_daily_exp.items():
-                total_exp = sum(daily_exps)
+            for char_id, daily_exps_dict in character_daily_exp.items():
+                # Soma todas as experiências ganhas por dia
+                total_exp = sum(daily_exps_dict.values())
+                # Divide pelo intervalo de dias solicitado
                 avg_exp = total_exp / interval_days
                 character_avg[char_id] = avg_exp
             
