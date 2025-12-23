@@ -185,12 +185,12 @@ const CharacterDetail: React.FC = () => {
                   {latestHistory ? latestHistory.experience.toLocaleString() : (character.experience || 0).toLocaleString()}
                 </Typography>
               </Grid>
-              <Grid item xs={12} md={4}>
-                <Typography variant="subtitle1">Experiência Diária</Typography>
-                <Typography variant="h6">
-                  {latestHistory ? latestHistory.daily_experience.toLocaleString() : (character.daily_experience || 0).toLocaleString()}
-                </Typography>
-              </Grid>
+                <Grid item xs={12} md={4}>
+                  <Typography variant="subtitle1">Experiência nas últimas 24hs</Typography>
+                  <Typography variant="h6">
+                    {latestHistory ? latestHistory.daily_experience.toLocaleString() : (character.daily_experience || 0).toLocaleString()}
+                  </Typography>
+                </Grid>
             </Grid>
           </Paper>
         </Grid>

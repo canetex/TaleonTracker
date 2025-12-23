@@ -337,7 +337,7 @@ const CharacterList: React.FC = () => {
                   Experiência: {formatNumber(character.experience)}
                 </Typography>
                 <Typography color="textSecondary" gutterBottom>
-                  Experiência Diária: {formatNumber(character.daily_experience)}
+                  Experiência nas últimas 24hs: {formatNumber(character.daily_experience)}
                 </Typography>
                 <Typography variant="body2" color="textSecondary">
                   Última atualização: {formatDate(character.last_updated)}

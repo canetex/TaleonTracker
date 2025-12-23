@@ -192,7 +192,7 @@ const CharacterCompare: React.FC = () => {
                       ))}
                     </TableRow>
                     <TableRow>
-                      <TableCell component="th" scope="row">Experiência Diária</TableCell>
+                      <TableCell component="th" scope="row">Experiência nas últimas 24hs</TableCell>
                       {selectedCharacters.map((char) => (
                         <TableCell key={char.id} align="right">
                           {char.daily_experience.toLocaleString()}
