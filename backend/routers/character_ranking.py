@@ -182,9 +182,12 @@ async def get_experience_ranking(
                         'last_update': last_updates.get(char_id)
                     })
             
-            # Ordena por experiência média
-            ranking_data.sort(key=lambda x: x['average_experience'], reverse=True)
+            # Ordena por experiência média (decrescente)
+            ranking_data.sort(key=lambda x: float(x['average_experience']), reverse=True)
             ranking_data = ranking_data[:limit]
+            
+            # Log para debug
+            logger.info(f"Ranking ordenado (primeiros 5): {[(r['name'], r['average_experience']) for r in ranking_data[:5]]}")
             
             ranking = []
             for idx, data in enumerate(ranking_data, 1):
@@ -194,8 +197,8 @@ async def get_experience_ranking(
                     "name": data['name'],
                     "world": data['world'],
                     "vocation": data['vocation'],
-                    "average_experience": data['average_experience'],
-                    "max_experience": data['average_experience'],
+                    "average_experience": float(data['average_experience']),
+                    "max_experience": float(data['average_experience']),
                     "last_update": data['last_update'].isoformat() if data['last_update'] else None
                 })
         
