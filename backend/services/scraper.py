@@ -272,13 +272,36 @@ async def update_all_characters():
     Atualiza todos os personagens cadastrados.
     """
     from database import SessionLocal
+    from fastapi_cache import FastAPICache
+    from fastapi_cache.backends.redis import RedisBackend
+    from redis import asyncio as aioredis
+    
+    # Inicializa o cache se ainda não foi inicializado
+    try:
+        if not FastAPICache.get_backend():
+            try:
+                redis = aioredis.from_url("redis://localhost", encoding="utf8", decode_responses=True)
+                FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")
+                logger.info("Cache inicializado para update_all_characters")
+            except Exception as e:
+                logger.warning(f"Erro ao inicializar cache (continuando sem cache): {str(e)}")
+    except:
+        pass  # Cache já inicializado ou não disponível
+    
     db = SessionLocal()
     try:
         characters = db.query(Character).all()
-        for character in characters:
-            logger.info(f"Atualizando personagem: {character.name}")
-            await scrape_character_data(character.name, db)
-            # Adiciona um delay entre as requisições
+        total = len(characters)
+        logger.info(f"Iniciando atualização de {total} personagens")
+        for idx, character in enumerate(characters, 1):
+            logger.info(f"[{idx}/{total}] Atualizando personagem: {character.name}")
+            try:
+                await scrape_character_data(character.name, db)
+                logger.info(f"[{idx}/{total}] Personagem {character.name} atualizado com sucesso")
+            except Exception as e:
+                logger.error(f"[{idx}/{total}] Erro ao atualizar {character.name}: {str(e)}")
+            # Adiciona um delay entre as requisições para não sobrecarregar o servidor
             await asyncio.sleep(2)
+        logger.info(f"Atualização completa finalizada. {total} personagens processados.")
     finally:
         db.close()
