@@ -244,10 +244,10 @@ const CharacterDetail: React.FC = () => {
                     },
                     ...(averageDailyExp > 0 ? [{
                       label: 'Média Diária de EXP',
-                      data: history.map(() => {
-                        // Linha horizontal baseada na primeira experiência + média diária acumulada
+                      data: history.map((_, index) => {
+                        // Linha que mostra o crescimento esperado baseado na média diária
                         const firstExp = history[0].experience;
-                        return firstExp + averageDailyExp * (history.length - 1);
+                        return firstExp + averageDailyExp * index;
                       }),
                       borderColor: 'rgba(255, 206, 86, 0.8)',
                       backgroundColor: 'rgba(255, 206, 86, 0.1)',
