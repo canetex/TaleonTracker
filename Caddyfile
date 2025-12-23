@@ -4,6 +4,7 @@
 
 # Redirecionamento de HTTPS para HTTP
 :443 {
+    tls internal
     redir http://{host}{uri} permanent
 }
 
