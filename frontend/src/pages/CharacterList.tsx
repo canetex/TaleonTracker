@@ -15,6 +15,8 @@ import {
   InputAdornment,
   IconButton,
   Paper,
+  FormControlLabel,
+  Checkbox,
 } from '@mui/material';
 import { Refresh as RefreshIcon, Search as SearchIcon, Star as StarIcon, StarBorder as StarBorderIcon } from '@mui/icons-material';
 
@@ -31,6 +33,7 @@ const CharacterList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [worldFilter, setWorldFilter] = useState<string>('');
   const [favorites, setFavorites] = useState<number[]>([]);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState<boolean>(false);
 
   const fetchCharacters = async () => {
     try {
@@ -85,9 +88,10 @@ const CharacterList: React.FC = () => {
         character.vocation.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesWorld = !worldFilter || 
         character.world.toLowerCase().includes(worldFilter.toLowerCase());
-      return matchesSearch && matchesWorld;
+      const matchesFavorites = !showFavoritesOnly || favorites.includes(character.id);
+      return matchesSearch && matchesWorld && matchesFavorites;
     });
-  }, [characters, searchTerm, worldFilter]);
+  }, [characters, searchTerm, worldFilter, showFavoritesOnly, favorites]);
 
   // Calcula estatísticas gerais - O(n) onde n é o número de personagens
   const totalCharacters = characters.length;
@@ -165,7 +169,7 @@ const CharacterList: React.FC = () => {
         </Grid>
       </Grid>
 
-      <Box mb={3} sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+      <Box mb={3} sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
         <TextField
           placeholder="Buscar por nome ou vocação..."
           value={searchTerm}
@@ -184,6 +188,16 @@ const CharacterList: React.FC = () => {
           value={worldFilter}
           onChange={(e) => setWorldFilter(e.target.value)}
           sx={{ minWidth: 200 }}
+        />
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={showFavoritesOnly}
+              onChange={(e) => setShowFavoritesOnly(e.target.checked)}
+              color="primary"
+            />
+          }
+          label="Apenas Favoritos"
         />
       </Box>
 
