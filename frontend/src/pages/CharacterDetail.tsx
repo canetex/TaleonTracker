@@ -106,7 +106,19 @@ const CharacterDetail: React.FC = () => {
         <Grid item xs={12}>
           <Paper sx={{ p: 2 }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-              <Typography variant="h4">{character.name}</Typography>
+              <Box display="flex" alignItems="center" gap={2}>
+                {character.outfit && (
+                  <img 
+                    src={character.outfit.startsWith('http') ? character.outfit : `https://san.taleon.online${character.outfit}`}
+                    alt={`${character.name} outfit`}
+                    style={{ width: 64, height: 64 }}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                )}
+                <Typography variant="h4">{character.name}</Typography>
+              </Box>
               <Button
                 variant="contained"
                 color="primary"
@@ -140,69 +152,82 @@ const CharacterDetail: React.FC = () => {
         </Grid>
 
         {history.length > 0 && (
-          <>
-            <Grid item xs={12} md={6}>
-              <Paper sx={{ p: 2 }}>
-                <Typography variant="h6" gutterBottom>
-                  Progresso de Nível
-                </Typography>
-                <Line
-                  data={{
-                    labels: history.map((h: CharacterHistory) =>
+          <Grid item xs={12}>
+            <Paper sx={{ p: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                Progresso de Nível e Experiência
+              </Typography>
+              <Line
+                data={{
+                  labels: history
+                    .slice()
+                    .reverse()
+                    .map((h: CharacterHistory) =>
                       new Date(h.timestamp).toLocaleDateString()
                     ),
-                    datasets: [
-                      {
-                        label: 'Nível',
-                        data: history.map((h: CharacterHistory) => h.level),
-                        borderColor: 'rgb(75, 192, 192)',
-                        tension: 0.1,
-                      },
-                    ],
-                  }}
-                  options={{
-                    responsive: true,
-                    plugins: {
-                      legend: {
-                        position: 'top' as const,
+                  datasets: [
+                    {
+                      label: 'Nível',
+                      data: history
+                        .slice()
+                        .reverse()
+                        .map((h: CharacterHistory) => h.level),
+                      borderColor: 'rgb(75, 192, 192)',
+                      backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                      tension: 0.1,
+                      yAxisID: 'y',
+                    },
+                    {
+                      label: 'Experiência',
+                      data: history
+                        .slice()
+                        .reverse()
+                        .map((h: CharacterHistory) => h.experience),
+                      borderColor: 'rgb(255, 99, 132)',
+                      backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                      tension: 0.1,
+                      yAxisID: 'y1',
+                    },
+                  ],
+                }}
+                options={{
+                  responsive: true,
+                  interaction: {
+                    mode: 'index' as const,
+                    intersect: false,
+                  },
+                  plugins: {
+                    legend: {
+                      position: 'top' as const,
+                    },
+                  },
+                  scales: {
+                    y: {
+                      type: 'linear' as const,
+                      display: true,
+                      position: 'left' as const,
+                      title: {
+                        display: true,
+                        text: 'Nível',
                       },
                     },
-                  }}
-                />
-              </Paper>
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <Paper sx={{ p: 2 }}>
-                <Typography variant="h6" gutterBottom>
-                  Progresso de Experiência
-                </Typography>
-                <Line
-                  data={{
-                    labels: history.map((h: CharacterHistory) =>
-                      new Date(h.timestamp).toLocaleDateString()
-                    ),
-                    datasets: [
-                      {
-                        label: 'Experiência',
-                        data: history.map((h: CharacterHistory) => h.experience),
-                        borderColor: 'rgb(255, 99, 132)',
-                        tension: 0.1,
+                    y1: {
+                      type: 'linear' as const,
+                      display: true,
+                      position: 'right' as const,
+                      title: {
+                        display: true,
+                        text: 'Experiência',
                       },
-                    ],
-                  }}
-                  options={{
-                    responsive: true,
-                    plugins: {
-                      legend: {
-                        position: 'top' as const,
+                      grid: {
+                        drawOnChartArea: false,
                       },
                     },
-                  }}
-                />
-              </Paper>
-            </Grid>
-          </>
+                  },
+                }}
+              />
+            </Paper>
+          </Grid>
         )}
       </Grid>
     </Box>

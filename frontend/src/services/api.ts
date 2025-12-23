@@ -60,4 +60,35 @@ export const getCharacterHistory = async (id: number): Promise<Character> => {
   }
 };
 
+export const addFavorite = async (characterId: number): Promise<void> => {
+  try {
+    await api.post(`/favorites/${characterId}`);
+  } catch (error) {
+    const apiError = error as ApiError;
+    console.error('Erro ao adicionar favorito:', apiError.response?.data || apiError.message);
+    throw error;
+  }
+};
+
+export const removeFavorite = async (characterId: number): Promise<void> => {
+  try {
+    await api.delete(`/favorites/${characterId}`);
+  } catch (error) {
+    const apiError = error as ApiError;
+    console.error('Erro ao remover favorito:', apiError.response?.data || apiError.message);
+    throw error;
+  }
+};
+
+export const getFavorites = async (): Promise<number[]> => {
+  try {
+    const response = await api.get<{character_id: number}[]>('/favorites');
+    return response.data.map(f => f.character_id);
+  } catch (error) {
+    const apiError = error as ApiError;
+    console.error('Erro ao buscar favoritos:', apiError.response?.data || apiError.message);
+    throw error;
+  }
+};
+
 export default api; 

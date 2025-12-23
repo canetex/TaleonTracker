@@ -14,9 +14,9 @@ import {
   TextField,
   InputAdornment,
 } from '@mui/material';
-import { Refresh as RefreshIcon, Search as SearchIcon } from '@mui/icons-material';
+import { Refresh as RefreshIcon, Search as SearchIcon, Star as StarIcon, StarBorder as StarBorderIcon } from '@mui/icons-material';
 
-import { getCharacters, updateCharacter } from '../services/api';
+import { getCharacters, updateCharacter, addFavorite, removeFavorite, getFavorites } from '../services/api';
 import type { Character } from '../types';
 import { formatNumber, formatDate } from '../utils/format';
 import AddCharacterForm from '../components/AddCharacterForm';
@@ -29,6 +29,7 @@ const CharacterList: React.FC = () => {
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [worldFilter, setWorldFilter] = useState<string>('');
+  const [favorites, setFavorites] = useState<number[]>([]);
 
   const fetchCharacters = async () => {
     try {
@@ -49,7 +50,31 @@ const CharacterList: React.FC = () => {
 
   useEffect(() => {
     fetchCharacters();
+    fetchFavorites();
   }, []);
+
+  const fetchFavorites = async () => {
+    try {
+      const favs = await getFavorites();
+      setFavorites(favs);
+    } catch (err) {
+      console.error('Erro ao buscar favoritos:', err);
+    }
+  };
+
+  const handleToggleFavorite = async (characterId: number) => {
+    try {
+      if (favorites.includes(characterId)) {
+        await removeFavorite(characterId);
+        setFavorites(favorites.filter(id => id !== characterId));
+      } else {
+        await addFavorite(characterId);
+        setFavorites([...favorites, characterId]);
+      }
+    } catch (err) {
+      console.error('Erro ao atualizar favorito:', err);
+    }
+  };
 
   // Filtros de busca - O(n) onde n é o número de personagens
   const filteredCharacters = useMemo(() => {
@@ -150,9 +175,28 @@ const CharacterList: React.FC = () => {
           <Grid item xs={12} sm={6} md={4} key={character.id}>
             <Card>
               <CardContent>
-                <Typography variant="h6" component="div">
-                  {character.name}
-                </Typography>
+                <Box display="flex" alignItems="center" gap={2} mb={1}>
+                  {character.outfit && (
+                    <img 
+                      src={character.outfit.startsWith('http') ? character.outfit : `https://san.taleon.online${character.outfit}`}
+                      alt={`${character.name} outfit`}
+                      style={{ width: 48, height: 48 }}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  )}
+                  <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+                    {character.name}
+                  </Typography>
+                  <IconButton
+                    size="small"
+                    onClick={() => handleToggleFavorite(character.id)}
+                    color={favorites.includes(character.id) ? "warning" : "default"}
+                  >
+                    {favorites.includes(character.id) ? <StarIcon /> : <StarBorderIcon />}
+                  </IconButton>
+                </Box>
                 <Typography color="textSecondary" gutterBottom>
                   Nível: {formatNumber(character.level)}
                 </Typography>
@@ -176,6 +220,13 @@ const CharacterList: React.FC = () => {
                 <Button
                   size="small"
                   color="primary"
+                  onClick={() => navigate(`/characters/${character.id}`)}
+                >
+                  Detalhes
+                </Button>
+                <Button
+                  size="small"
+                  color="secondary"
                   onClick={() => handleUpdateCharacter(character.id)}
                   disabled={updatingId === character.id}
                   startIcon={<RefreshIcon />}

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from database import Base
 from datetime import datetime
@@ -12,6 +12,7 @@ class Character(Base):
     level = Column(Integer, default=0)
     vocation = Column(String, default='')
     world = Column(String, default='')
+    outfit = Column(String, default='')  # URL da imagem do outfit
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

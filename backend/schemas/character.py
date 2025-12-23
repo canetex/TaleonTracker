@@ -24,6 +24,10 @@ class CharacterBase(BaseModel):
     level: int = 0
     vocation: str = ""
     world: str = ""
+    outfit: str = ""
+    experience: float = 0
+    daily_experience: float = 0
+    last_updated: datetime
 
 class CharacterCreate(BaseModel):
     name: str

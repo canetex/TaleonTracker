@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import desc
+from sqlalchemy import desc, text
 from typing import List, Dict, Any
-from database import get_db
+from database import get_db, engine
 from models.character import Character
 from models.character_history import CharacterHistory
 from schemas.character import CharacterCreate, CharacterResponse
@@ -12,15 +12,42 @@ import logging
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-def enrich_character_response(character: Character) -> Dict[str, Any]:
+def enrich_character_response(character: Character, db: Session = None) -> Dict[str, Any]:
     """
     Enriquece a resposta do personagem com dados do histórico mais recente
+    Se não houver histórico, busca dados de character_snapshots
     Complexidade: O(m) onde m é o tamanho do histórico
     """
     # Ordena o histórico por timestamp (mais recente primeiro)
     sorted_history = sorted(character.history, key=lambda h: h.timestamp, reverse=True) if character.history else []
     latest_history = sorted_history[0] if sorted_history else None
     previous_history = sorted_history[1] if len(sorted_history) > 1 else None
+    
+    # Se não há histórico, tenta buscar do character_snapshots
+    experience = 0
+    level = character.level
+    outfit = getattr(character, 'outfit', '') or ''
+    
+    if latest_history:
+        experience = latest_history.experience
+        level = latest_history.level
+    elif db:
+        # Busca do character_snapshots
+        try:
+            result = db.execute(text("""
+                SELECT experience, level, outfit_image_url 
+                FROM character_snapshots 
+                WHERE character_id = :char_id 
+                ORDER BY scraped_at DESC 
+                LIMIT 1
+            """), {"char_id": character.id})
+            row = result.fetchone()
+            if row:
+                experience = float(row[0]) if row[0] else 0
+                level = row[1] if row[1] else character.level
+                outfit = row[2] if row[2] else outfit
+        except Exception as e:
+            logger.warning(f"Erro ao buscar snapshot para {character.name}: {str(e)}")
     
     # Calcula experiência diária se houver histórico anterior
     daily_experience = 0
@@ -32,16 +59,20 @@ def enrich_character_response(character: Character) -> Dict[str, Any]:
     elif latest_history:
         # Se não há histórico anterior, usa o valor salvo
         daily_experience = latest_history.daily_experience or 0
+    elif db and sorted_history:
+        # Se há apenas um registro, não há como calcular diária
+        daily_experience = 0
     
     response = {
         "id": character.id,
         "name": character.name,
-        "level": latest_history.level if latest_history else character.level,
+        "level": level,
         "vocation": character.vocation,
         "world": character.world,
+        "outfit": outfit,
         "created_at": character.created_at,
         "updated_at": character.updated_at,
-        "experience": latest_history.experience if latest_history else 0,
+        "experience": experience,
         "daily_experience": daily_experience,
         "last_updated": latest_history.timestamp if latest_history else character.updated_at,
         "history": [
@@ -88,7 +119,7 @@ async def create_character(character: CharacterCreate, db: Session = Depends(get
         db.refresh(db_character)
         # Recarrega com histórico
         db_character = db.query(Character).options(joinedload(Character.history)).filter(Character.id == db_character.id).first()
-        return enrich_character_response(db_character)
+        return enrich_character_response(db_character, db)
     except HTTPException:
         raise
     except Exception as e:
@@ -103,7 +134,7 @@ async def list_characters(db: Session = Depends(get_db)):
     Complexidade: O(n*m) onde n é número de personagens e m é histórico médio
     """
     characters = db.query(Character).options(joinedload(Character.history)).all()
-    return [enrich_character_response(char) for char in characters]
+    return [enrich_character_response(char, db) for char in characters]
 
 @router.get("/{character_id}")
 async def get_character(character_id: int, db: Session = Depends(get_db)):
@@ -114,7 +145,7 @@ async def get_character(character_id: int, db: Session = Depends(get_db)):
     character = db.query(Character).options(joinedload(Character.history)).filter(Character.id == character_id).first()
     if not character:
         raise HTTPException(status_code=404, detail="Personagem não encontrado")
-    return enrich_character_response(character)
+    return enrich_character_response(character, db)
 
 @router.post("/{character_id}/update", response_model=CharacterResponse)
 async def update_character(character_id: int, db: Session = Depends(get_db)):
@@ -134,7 +165,7 @@ async def update_character(character_id: int, db: Session = Depends(get_db)):
         db.refresh(character)
         character = db.query(Character).options(joinedload(Character.history)).filter(Character.id == character_id).first()
         logger.info(f"Personagem {character.name} atualizado com sucesso")
-        return enrich_character_response(character)
+        return enrich_character_response(character, db)
     except HTTPException:
         raise
     except Exception as e:

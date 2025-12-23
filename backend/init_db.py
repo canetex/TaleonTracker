@@ -32,6 +32,8 @@ def init_db():
                 conn.execute(text("ALTER TABLE characters ADD COLUMN vocation VARCHAR"))
             if 'world' not in existing_columns:
                 conn.execute(text("ALTER TABLE characters ADD COLUMN world VARCHAR"))
+            if 'outfit' not in existing_columns:
+                conn.execute(text("ALTER TABLE characters ADD COLUMN outfit VARCHAR(500) DEFAULT ''"))
             if 'last_updated' not in existing_columns:
                 conn.execute(text("ALTER TABLE characters ADD COLUMN last_updated TIMESTAMP"))
 
