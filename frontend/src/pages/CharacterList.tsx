@@ -100,77 +100,54 @@ const CharacterList: React.FC = () => {
       const matchesExperienceDays = !experienceDaysFilter || (() => {
         if (experienceDaysFilter === 0) return true;
         
-        // Calcula a data de corte uma única vez
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - experienceDaysFilter);
-        cutoffDate.setHours(0, 0, 0, 0); // Zera horas para comparação apenas de data
+        // Calcula a data de corte (milissegundos desde epoch)
+        const now = new Date();
+        const cutoffTime = now.getTime() - (experienceDaysFilter * 24 * 60 * 60 * 1000);
         
-        // Verifica se a última atualização está dentro do intervalo
-        if (character.last_updated) {
-          const lastUpdated = new Date(character.last_updated);
-          lastUpdated.setHours(0, 0, 0, 0);
-          
-          // Se foi atualizado no período, verifica se teve experiência
-          if (lastUpdated >= cutoffDate) {
-            // Verifica se tem experiência diária > 0 OU se há histórico recente
-            if (character.daily_experience > 0) {
-              return true;
-            }
-            
-            // Verifica histórico para ver se houve mudança de experiência
-            if (character.history && character.history.length > 0) {
-              // Ordena histórico por data (mais recente primeiro)
-              const sortedHistory = [...character.history].sort((a, b) => 
-                new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-              );
-              
-              // Pega o registro mais recente dentro do período
-              const latestInPeriod = sortedHistory.find(h => {
-                const historyDate = new Date(h.timestamp);
-                historyDate.setHours(0, 0, 0, 0);
-                return historyDate >= cutoffDate;
-              });
-              
-              if (latestInPeriod) {
-                // Verifica se há um registro anterior para comparar
-                const previousIndex = sortedHistory.indexOf(latestInPeriod) + 1;
-                if (previousIndex < sortedHistory.length) {
-                  const previous = sortedHistory[previousIndex];
-                  // Se houve aumento de experiência, considera que teve experiência
-                  if (latestInPeriod.experience > previous.experience) {
-                    return true;
-                  }
-                } else if (latestInPeriod.experience > 0) {
-                  // Se é o primeiro registro e tem experiência, considera válido
-                  return true;
-                }
-              }
-            }
+        // Verifica se tem experiência diária > 0 e foi atualizado recentemente
+        if (character.daily_experience > 0 && character.last_updated) {
+          const lastUpdatedTime = new Date(character.last_updated).getTime();
+          if (lastUpdatedTime >= cutoffTime) {
+            return true;
           }
         }
         
-        // Verifica histórico recente mesmo se last_updated não estiver no período
+        // Verifica histórico recente
         if (character.history && character.history.length > 0) {
+          // Ordena histórico por data (mais recente primeiro)
           const sortedHistory = [...character.history].sort((a, b) => 
             new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
           );
           
           // Encontra registros no período
           const periodHistory = sortedHistory.filter(h => {
-            const historyDate = new Date(h.timestamp);
-            historyDate.setHours(0, 0, 0, 0);
-            return historyDate >= cutoffDate;
+            const historyTime = new Date(h.timestamp).getTime();
+            return historyTime >= cutoffTime;
           });
           
           if (periodHistory.length > 0) {
-            // Verifica se houve mudança de experiência no período
-            for (let i = 0; i < periodHistory.length - 1; i++) {
-              if (periodHistory[i].experience > periodHistory[i + 1].experience) {
-                return true;
+            // Se há mais de um registro no período, verifica se houve aumento de experiência
+            if (periodHistory.length > 1) {
+              for (let i = 0; i < periodHistory.length - 1; i++) {
+                if (periodHistory[i].experience > periodHistory[i + 1].experience) {
+                  return true;
+                }
               }
             }
-            // Se há apenas um registro no período, verifica se tem experiência
-            if (periodHistory.length === 1 && periodHistory[0].experience > 0) {
+            
+            // Verifica se algum registro no período tem daily_experience > 0
+            if (periodHistory.some(h => h.daily_experience > 0)) {
+              return true;
+            }
+            
+            // Verifica se o primeiro registro do período tem experiência maior que o último fora do período
+            const firstInPeriod = periodHistory[0];
+            const lastBeforePeriod = sortedHistory.find(h => {
+              const historyTime = new Date(h.timestamp).getTime();
+              return historyTime < cutoffTime;
+            });
+            
+            if (lastBeforePeriod && firstInPeriod.experience > lastBeforePeriod.experience) {
               return true;
             }
           }
