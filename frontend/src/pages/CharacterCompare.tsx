@@ -226,11 +226,20 @@ const CharacterCompare: React.FC = () => {
                     </Typography>
                     <Line
                       data={{
-                        labels: Array.from({ length: 30 }, (_, i) => {
-                          const date = new Date();
-                          date.setDate(date.getDate() - (29 - i));
-                          return date.toLocaleDateString();
-                        }),
+                        labels: (() => {
+                          // Pega todas as datas únicas dos históricos dos personagens selecionados
+                          const allDates = new Set<string>();
+                          selectedCharacters
+                            .filter(char => char.history && char.history.length > 0)
+                            .forEach(char => {
+                              char.history.forEach((h: CharacterHistory) => {
+                                allDates.add(new Date(h.timestamp).toLocaleDateString());
+                              });
+                            });
+                          return Array.from(allDates).sort((a, b) => 
+                            new Date(a).getTime() - new Date(b).getTime()
+                          ).slice(-30);
+                        })(),
                         datasets: selectedCharacters
                           .filter(char => char.history && char.history.length > 0)
                           .map((char, index) => {
@@ -242,7 +251,8 @@ const CharacterCompare: React.FC = () => {
                               'rgb(153, 102, 255)',
                             ];
                             const sortedHistory = [...(char.history || [])]
-                              .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+                              .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+                              .slice(-30);
                             return {
                               label: char.name,
                               data: sortedHistory.map((h: CharacterHistory) => h.level),
@@ -271,11 +281,20 @@ const CharacterCompare: React.FC = () => {
                     </Typography>
                     <Line
                       data={{
-                        labels: Array.from({ length: 30 }, (_, i) => {
-                          const date = new Date();
-                          date.setDate(date.getDate() - (29 - i));
-                          return date.toLocaleDateString();
-                        }),
+                        labels: (() => {
+                          // Pega todas as datas únicas dos históricos dos personagens selecionados
+                          const allDates = new Set<string>();
+                          selectedCharacters
+                            .filter(char => char.history && char.history.length > 0)
+                            .forEach(char => {
+                              char.history.forEach((h: CharacterHistory) => {
+                                allDates.add(new Date(h.timestamp).toLocaleDateString());
+                              });
+                            });
+                          return Array.from(allDates).sort((a, b) => 
+                            new Date(a).getTime() - new Date(b).getTime()
+                          ).slice(-30);
+                        })(),
                         datasets: selectedCharacters
                           .filter(char => char.history && char.history.length > 0)
                           .map((char, index) => {
@@ -287,7 +306,8 @@ const CharacterCompare: React.FC = () => {
                               'rgb(153, 102, 255)',
                             ];
                             const sortedHistory = [...(char.history || [])]
-                              .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+                              .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+                              .slice(-30);
                             return {
                               label: char.name,
                               data: sortedHistory.map((h: CharacterHistory) => h.experience),

@@ -182,7 +182,7 @@ const Dashboard: React.FC = () => {
                   data={{
                     labels: character.history
                       .slice()
-                      .reverse()
+                      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
                       .map((h: CharacterHistory) =>
                         new Date(h.timestamp).toLocaleDateString()
                       ),
@@ -191,27 +191,58 @@ const Dashboard: React.FC = () => {
                         label: 'Nível',
                         data: character.history
                           .slice()
-                          .reverse()
+                          .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
                           .map((h: CharacterHistory) => h.level),
                         borderColor: 'rgb(75, 192, 192)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
                         tension: 0.1,
+                        yAxisID: 'y',
                       },
                       {
                         label: 'Experiência',
                         data: character.history
                           .slice()
-                          .reverse()
+                          .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
                           .map((h: CharacterHistory) => h.experience),
                         borderColor: 'rgb(255, 99, 132)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
                         tension: 0.1,
+                        yAxisID: 'y1',
                       },
                     ],
                   }}
                   options={{
                     responsive: true,
+                    interaction: {
+                      mode: 'index' as const,
+                      intersect: false,
+                    },
                     plugins: {
                       legend: {
                         position: 'top' as const,
+                      },
+                    },
+                    scales: {
+                      y: {
+                        type: 'linear' as const,
+                        display: true,
+                        position: 'left' as const,
+                        title: {
+                          display: true,
+                          text: 'Nível',
+                        },
+                      },
+                      y1: {
+                        type: 'linear' as const,
+                        display: true,
+                        position: 'right' as const,
+                        title: {
+                          display: true,
+                          text: 'Experiência',
+                        },
+                        grid: {
+                          drawOnChartArea: false,
+                        },
                       },
                     },
                   }}
