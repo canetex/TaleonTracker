@@ -355,7 +355,7 @@ const WorldStats: React.FC = () => {
                     label="Tipo"
                   >
                     <MenuItem value="accumulated">Acumulada</MenuItem>
-                    <MenuItem value="average">Média</MenuItem>
+                    <MenuItem value="average">Média Diária</MenuItem>
                   </Select>
                 </FormControl>
                 <FormControl size="small" sx={{ minWidth: 120 }}>
