@@ -34,6 +34,10 @@ async def download_outfit(outfit_url: str, character_id: int, world: str) -> str
         parsed_url = urlparse(outfit_url)
         filename = os.path.basename(parsed_url.path)
         
+        # Se o filename está vazio (URL sem path), usa o outfit_url como filename
+        if not filename or filename == '/':
+            filename = outfit_url.split('/')[-1] if '/' in outfit_url else outfit_url
+        
         # Se não tem extensão, adiciona .png
         if not filename.endswith(('.png', '.jpg', '.jpeg', '.gif')):
             filename = f"{filename}.png"
@@ -48,13 +52,32 @@ async def download_outfit(outfit_url: str, character_id: int, world: str) -> str
         
         # Faz o download da imagem
         async with aiohttp.ClientSession() as session:
-            # Se a URL é relativa, precisa construir a URL completa
+            # Se a URL é relativa ou é apenas um nome de arquivo, precisa construir a URL completa
             if outfit_url.startswith("/"):
                 base_url = "https://san.taleon.online" if world.lower() == "san" else "https://aura.taleon.online"
                 full_url = f"{base_url}{outfit_url}"
             elif not outfit_url.startswith("http"):
+                # Se é apenas um nome de arquivo (como _taleon_Aura_8b59e21f.png), constrói URL completa
                 base_url = "https://san.taleon.online" if world.lower() == "san" else "https://aura.taleon.online"
-                full_url = f"{base_url}/{outfit_url.lstrip('/')}"
+                # Tenta diferentes caminhos comuns para outfits
+                possible_paths = [
+                    f"/img/outfits/{outfit_url}",
+                    f"/outfits/{outfit_url}",
+                    f"/{outfit_url}",
+                ]
+                full_url = None
+                for path in possible_paths:
+                    test_url = f"{base_url}{path}"
+                    try:
+                        async with session.head(test_url, timeout=5) as test_response:
+                            if test_response.status == 200:
+                                full_url = test_url
+                                break
+                    except:
+                        continue
+                # Se nenhum caminho funcionou, usa o primeiro como padrão
+                if not full_url:
+                    full_url = f"{base_url}/img/outfits/{outfit_url}"
             else:
                 full_url = outfit_url
             
