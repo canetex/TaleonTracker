@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import characters, auth, proxy
+from routers import characters, auth, proxy, server_stats
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
 from redis import asyncio as aioredis
@@ -36,6 +36,7 @@ async def startup():
 app.include_router(characters.router, prefix="/api/characters", tags=["characters"])
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(proxy.router, prefix="/api/proxy", tags=["proxy"])
+app.include_router(server_stats.router, prefix="/api/stats", tags=["stats"])
 
 @app.get("/")
 async def root():

@@ -5,8 +5,9 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from database import engine, Base
-from backend.models.character import Character
-from backend.models.character_history import CharacterHistory
+from models.character import Character
+from models.character_history import CharacterHistory
+from models.server_stats import ServerStats
 from sqlalchemy import text
 
 def init_db():

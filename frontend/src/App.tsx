@@ -5,9 +5,11 @@ import CssBaseline from '@mui/material/CssBaseline';
 import Box from '@mui/material/Box';
 
 import Navbar from './components/Navbar';
+import CookieConsent from './components/CookieConsent';
 import Dashboard from './pages/Dashboard';
 import CharacterList from './pages/CharacterList';
 import CharacterDetail from './pages/CharacterDetail';
+import WorldStats from './pages/WorldStats';
 
 const theme = createTheme({
   palette: {
@@ -28,13 +30,24 @@ function App() {
       <Router>
         <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
           <Navbar />
-          <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
+          <Box 
+            component="main" 
+            sx={{ 
+              flexGrow: 1, 
+              p: 3,
+              width: '80%',
+              maxWidth: '1400px',
+              margin: '0 auto'
+            }}
+          >
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/characters" element={<CharacterList />} />
               <Route path="/characters/:id" element={<CharacterDetail />} />
+              <Route path="/stats" element={<WorldStats />} />
             </Routes>
           </Box>
+          <CookieConsent />
         </Box>
       </Router>
     </ThemeProvider>

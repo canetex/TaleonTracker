@@ -17,7 +17,14 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # URL base do Taleon
-TALEON_BASE_URL = "https://san.taleon.online"
+# Mundos disponíveis: San, Aura
+# Mundo Gaia desativado conforme solicitação
+TALEON_WORLDS = {
+    "San": "https://san.taleon.online",
+    "Aura": "https://aura.taleon.online",
+    # "Gaia": "https://gaia.taleon.online"  # Desativado
+}
+TALEON_BASE_URL = TALEON_WORLDS["San"]  # Padrão: San
 
 @cache(expire=300)  # Cache por 5 minutos
 async def get_character_html(character_name: str) -> str:

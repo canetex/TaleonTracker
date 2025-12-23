@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -11,8 +11,10 @@ import {
   CircularProgress,
   Container,
   Alert,
+  TextField,
+  InputAdornment,
 } from '@mui/material';
-import { Refresh as RefreshIcon } from '@mui/icons-material';
+import { Refresh as RefreshIcon, Search as SearchIcon } from '@mui/icons-material';
 
 import { getCharacters, updateCharacter } from '../services/api';
 import type { Character } from '../types';
@@ -25,6 +27,8 @@ const CharacterList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [worldFilter, setWorldFilter] = useState<string>('');
 
   const fetchCharacters = async () => {
     try {
@@ -46,6 +50,18 @@ const CharacterList: React.FC = () => {
   useEffect(() => {
     fetchCharacters();
   }, []);
+
+  // Filtros de busca - O(n) onde n é o número de personagens
+  const filteredCharacters = useMemo(() => {
+    return characters.filter((character) => {
+      const matchesSearch = !searchTerm || 
+        character.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        character.vocation.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesWorld = !worldFilter || 
+        character.world.toLowerCase().includes(worldFilter.toLowerCase());
+      return matchesSearch && matchesWorld;
+    });
+  }, [characters, searchTerm, worldFilter]);
 
   const handleAddCharacter = async () => {
     try {
@@ -95,14 +111,42 @@ const CharacterList: React.FC = () => {
         <AddCharacterForm onAdd={handleAddCharacter} />
       </Box>
 
+      <Box mb={3} sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+        <TextField
+          placeholder="Buscar por nome ou vocação..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+          }}
+          sx={{ flexGrow: 1, minWidth: 200 }}
+        />
+        <TextField
+          placeholder="Filtrar por mundo..."
+          value={worldFilter}
+          onChange={(e) => setWorldFilter(e.target.value)}
+          sx={{ minWidth: 200 }}
+        />
+      </Box>
+
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
       )}
 
+      {filteredCharacters.length === 0 && !loading && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Nenhum personagem encontrado com os filtros aplicados.
+        </Alert>
+      )}
+
       <Grid container spacing={2}>
-        {characters.map((character) => (
+        {filteredCharacters.map((character) => (
           <Grid item xs={12} sm={6} md={4} key={character.id}>
             <Card>
               <CardContent>

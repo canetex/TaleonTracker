@@ -35,6 +35,14 @@ const Navbar: React.FC = () => {
             Personagens
           </Button>
           <Button
+            color="inherit"
+            component={RouterLink}
+            to="/stats"
+            sx={{ mr: 2 }}
+          >
+            Estatísticas
+          </Button>
+          <Button
             variant="contained"
             color="secondary"
             startIcon={<AddIcon />}

@@ -7,8 +7,8 @@ const api = axios.create({
 
 export const getCharacters = async (): Promise<Character[]> => {
   try {
-    const response = await api.get<ApiResponse<Character[]>>('/api/characters');
-    return response.data.data;
+    const response = await api.get<Character[]>('/api/characters');
+    return response.data;
   } catch (error) {
     const apiError = error as ApiError;
     console.error('Erro ao buscar personagens:', apiError.response?.data || apiError.message);
@@ -18,8 +18,8 @@ export const getCharacters = async (): Promise<Character[]> => {
 
 export const addCharacter = async (character: CharacterCreate): Promise<Character> => {
   try {
-    const response = await api.post<ApiResponse<Character>>('/api/characters', character);
-    return response.data.data;
+    const response = await api.post<Character>('/api/characters', character);
+    return response.data;
   } catch (error) {
     const apiError = error as ApiError;
     console.error('Erro ao adicionar personagem:', apiError.response?.data || apiError.message);
@@ -29,8 +29,8 @@ export const addCharacter = async (character: CharacterCreate): Promise<Characte
 
 export const updateCharacter = async (id: number, character: Partial<Character>): Promise<Character> => {
   try {
-    const response = await api.put<ApiResponse<Character>>(`/api/characters/${id}`, character);
-    return response.data.data;
+    const response = await api.post<Character>(`/api/characters/${id}/update`, character);
+    return response.data;
   } catch (error) {
     const apiError = error as ApiError;
     console.error('Erro ao atualizar personagem:', apiError.response?.data || apiError.message);
@@ -50,11 +50,11 @@ export const deleteCharacter = async (id: number): Promise<void> => {
 
 export const getCharacterHistory = async (id: number): Promise<Character> => {
   try {
-    const response = await api.get<ApiResponse<Character>>(`/api/characters/${id}/history`);
-    return response.data.data;
+    const response = await api.get<Character>(`/api/characters/${id}`);
+    return response.data;
   } catch (error) {
     const apiError = error as ApiError;
-    console.error('Erro ao atualizar dados do personagem:', apiError.response?.data || apiError.message);
+    console.error('Erro ao buscar histórico do personagem:', apiError.response?.data || apiError.message);
     throw error;
   }
 };
