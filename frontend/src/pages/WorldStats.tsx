@@ -11,8 +11,16 @@ import {
   Select,
   MenuItem,
   SelectChangeEvent,
+  ToggleButton,
+  ToggleButtonGroup,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
 } from '@mui/material';
-import { Line } from 'react-chartjs-2';
+import { Line, Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -35,6 +43,16 @@ ChartJS.register(
   Legend
 );
 
+const DAYS_OPTIONS = [
+  { value: 7, label: '7 dias' },
+  { value: 15, label: '15 dias' },
+  { value: 30, label: '30 dias' },
+  { value: 45, label: '45 dias' },
+  { value: 90, label: '90 dias' },
+  { value: 180, label: '180 dias' },
+  { value: 0, label: 'Todos' },
+];
+
 interface ServerStats {
   id: number;
   world: string;
@@ -55,6 +73,9 @@ const WorldStats: React.FC = () => {
   const [activeHistory, setActiveHistory] = useState<ServerStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [daysFilter, setDaysFilter] = useState<number>(30);
+  const [rankingDays, setRankingDays] = useState<number>(30);
+  const [ranking, setRanking] = useState<any[]>([]);
 
   useEffect(() => {
     fetchWorlds();
@@ -64,7 +85,11 @@ const WorldStats: React.FC = () => {
     if (selectedWorld) {
       fetchStats();
     }
-  }, [selectedWorld]);
+  }, [selectedWorld, daysFilter]);
+
+  useEffect(() => {
+    fetchRanking();
+  }, [rankingDays, selectedWorld]);
 
   const fetchWorlds = async () => {
     try {
@@ -85,9 +110,10 @@ const WorldStats: React.FC = () => {
     
     try {
       setLoading(true);
+      const daysParam = daysFilter > 0 ? `?days=${daysFilter}` : '?days=0';
       const [expResponse, activeResponse] = await Promise.all([
-        api.get<ServerStats[]>(`/stats/worlds/${selectedWorld}/exp-history?days=30`),
-        api.get<ServerStats[]>(`/stats/worlds/${selectedWorld}/active-history?days=30`),
+        api.get<ServerStats[]>(`/stats/worlds/${selectedWorld}/exp-history${daysParam}`),
+        api.get<ServerStats[]>(`/stats/worlds/${selectedWorld}/active-history${daysParam}`),
       ]);
       
       setExpHistory(expResponse.data);
@@ -97,6 +123,17 @@ const WorldStats: React.FC = () => {
       setError('Erro ao carregar estatísticas do mundo');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchRanking = async () => {
+    try {
+      const daysParam = rankingDays > 0 ? `&days=${rankingDays}` : '&days=0';
+      const worldParam = selectedWorld ? `&world=${selectedWorld}` : '';
+      const response = await api.get<any[]>(`/ranking/experience?limit=20${daysParam}${worldParam}`);
+      setRanking(response.data);
+    } catch (err) {
+      console.error('Erro ao carregar ranking:', err);
     }
   };
 
@@ -114,22 +151,38 @@ const WorldStats: React.FC = () => {
 
   return (
     <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
         <Typography variant="h4">Estatísticas do Servidor/Mundo</Typography>
-        <FormControl sx={{ minWidth: 200 }}>
-          <InputLabel>Mundo</InputLabel>
-          <Select
-            value={selectedWorld}
-            onChange={handleWorldChange}
-            label="Mundo"
-          >
-            {worlds.map((world) => (
-              <MenuItem key={world} value={world}>
-                {world}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        <Box display="flex" gap={2} flexWrap="wrap">
+          <FormControl sx={{ minWidth: 150 }}>
+            <InputLabel>Mundo</InputLabel>
+            <Select
+              value={selectedWorld}
+              onChange={handleWorldChange}
+              label="Mundo"
+            >
+              {worlds.map((world) => (
+                <MenuItem key={world} value={world}>
+                  {world.charAt(0).toUpperCase() + world.slice(1)}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl sx={{ minWidth: 150 }}>
+            <InputLabel>Período</InputLabel>
+            <Select
+              value={daysFilter}
+              onChange={(e) => setDaysFilter(e.target.value as number)}
+              label="Período"
+            >
+              {DAYS_OPTIONS.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
       </Box>
 
       {error && (
@@ -249,7 +302,105 @@ const WorldStats: React.FC = () => {
               />
             ) : (
               <Typography variant="body2" color="text.secondary" align="center" p={4}>
-                Nenhum dado disponível. Execute o cálculo de estatísticas primeiro.
+                Nenhum dado disponível para este período.
+              </Typography>
+            )}
+          </Paper>
+        </Grid>
+
+        {/* Ranking de Experiência */}
+        <Grid item xs={12}>
+          <Paper sx={{ p: 2 }}>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+              <Typography variant="h6" gutterBottom>
+                Ranking de Experiência Histórica
+              </Typography>
+              <FormControl sx={{ minWidth: 150 }}>
+                <InputLabel>Período</InputLabel>
+                <Select
+                  value={rankingDays}
+                  onChange={(e) => setRankingDays(e.target.value as number)}
+                  label="Período"
+                >
+                  {DAYS_OPTIONS.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+            {ranking.length > 0 ? (
+              <>
+                <TableContainer>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Rank</TableCell>
+                        <TableCell>Nome</TableCell>
+                        <TableCell>Mundo</TableCell>
+                        <TableCell>Vocação</TableCell>
+                        <TableCell align="right">Experiência Máxima</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {ranking.map((char) => (
+                        <TableRow key={char.character_id}>
+                          <TableCell>{char.rank}</TableCell>
+                          <TableCell>{char.name}</TableCell>
+                          <TableCell>{char.world.charAt(0).toUpperCase() + char.world.slice(1)}</TableCell>
+                          <TableCell>{char.vocation}</TableCell>
+                          <TableCell align="right">{char.max_experience.toLocaleString()}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+                <Box mt={2}>
+                  <Bar
+                    data={{
+                      labels: ranking.slice(0, 10).map((char) => char.name),
+                      datasets: [
+                        {
+                          label: 'Experiência Máxima',
+                          data: ranking.slice(0, 10).map((char) => char.max_experience),
+                          backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                          borderColor: 'rgb(75, 192, 192)',
+                          borderWidth: 1,
+                        },
+                      ],
+                    }}
+                    options={{
+                      responsive: true,
+                      plugins: {
+                        legend: {
+                          display: false,
+                        },
+                        tooltip: {
+                          callbacks: {
+                            label: function(context) {
+                              return `EXP: ${context.parsed.y.toLocaleString()}`;
+                            },
+                          },
+                        },
+                      },
+                      scales: {
+                        y: {
+                          beginAtZero: false,
+                          ticks: {
+                            callback: function(value) {
+                              return Number(value).toLocaleString();
+                            },
+                          },
+                        },
+                      },
+                    }}
+                  />
+                </Box>
+              </>
+            ) : (
+              <Typography variant="body2" color="text.secondary" align="center" p={4}>
+                Nenhum dado disponível para o ranking.
               </Typography>
             )}
           </Paper>

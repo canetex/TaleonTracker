@@ -42,6 +42,10 @@ app.include_router(server_stats.router, prefix="/api/stats", tags=["stats"])
 from routers import favorites
 app.include_router(favorites.router, prefix="/api/favorites", tags=["favorites"])
 
+# Importar e incluir router de ranking
+from routers import character_ranking
+app.include_router(character_ranking.router, prefix="/api", tags=["ranking"])
+
 @app.get("/")
 async def root():
     return {"message": "TaleonTracker API"}
