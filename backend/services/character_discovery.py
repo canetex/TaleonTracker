@@ -107,8 +107,19 @@ async def fetch_and_extract_characters(url: str, table_selector: str = None, tab
             'Referer': 'https://www.google.com/'
         }
         
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=headers, timeout=10) as response:
+        # Configura timeout e desabilita compressão Brotli se não estiver disponível
+        timeout = aiohttp.ClientTimeout(total=20, connect=15)
+        connector = aiohttp.TCPConnector()
+        async with aiohttp.ClientSession(timeout=timeout, connector=connector) as session:
+            # Remove 'br' (Brotli) do Accept-Encoding se não estiver disponível
+            headers_no_br = headers.copy()
+            if 'Accept-Encoding' in headers_no_br:
+                # Mantém apenas gzip e deflate
+                headers_no_br['Accept-Encoding'] = 'gzip, deflate'
+            else:
+                headers_no_br['Accept-Encoding'] = 'gzip, deflate'
+            
+            async with session.get(url, headers=headers_no_br, timeout=timeout) as response:
                 response.raise_for_status()
                 html_content = await response.text()
                 logger.info(f"HTML obtido de {url} (tamanho: {len(html_content)})")

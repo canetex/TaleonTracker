@@ -10,7 +10,8 @@ pydantic==2.5.2
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.6
-aiohttp==3.9.1
+aiohttp
+brotli==3.9.1
 aiofiles==23.2.1
 pytest==7.4.3
 httpx==0.25.2
