@@ -8,7 +8,7 @@ const api = axios.create({
 
 export const getCharacters = async (): Promise<Character[]> => {
   try {
-    const response = await api.get<Character[]>('/api/characters');
+    const response = await api.get<Character[]>('/characters');
     return response.data;
   } catch (error) {
     const apiError = error as ApiError;
@@ -19,7 +19,7 @@ export const getCharacters = async (): Promise<Character[]> => {
 
 export const addCharacter = async (character: CharacterCreate): Promise<Character> => {
   try {
-    const response = await api.post<Character>('/api/characters', character);
+    const response = await api.post<Character>('/characters', character);
     return response.data;
   } catch (error) {
     const apiError = error as ApiError;
@@ -30,7 +30,7 @@ export const addCharacter = async (character: CharacterCreate): Promise<Characte
 
 export const updateCharacter = async (id: number, character: Partial<Character>): Promise<Character> => {
   try {
-    const response = await api.post<Character>(`/api/characters/${id}/update`, character);
+    const response = await api.post<Character>(`/characters/${id}/update`, character);
     return response.data;
   } catch (error) {
     const apiError = error as ApiError;
@@ -41,7 +41,7 @@ export const updateCharacter = async (id: number, character: Partial<Character>)
 
 export const deleteCharacter = async (id: number): Promise<void> => {
   try {
-    await api.delete(`/api/characters/${id}`);
+    await api.delete(`/characters/${id}`);
   } catch (error) {
     const apiError = error as ApiError;
     console.error('Erro ao deletar personagem:', apiError.response?.data || apiError.message);
@@ -51,7 +51,7 @@ export const deleteCharacter = async (id: number): Promise<void> => {
 
 export const getCharacterHistory = async (id: number): Promise<Character> => {
   try {
-    const response = await api.get<Character>(`/api/characters/${id}`);
+    const response = await api.get<Character>(`/characters/${id}`);
     return response.data;
   } catch (error) {
     const apiError = error as ApiError;

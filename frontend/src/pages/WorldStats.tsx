@@ -68,7 +68,7 @@ const WorldStats: React.FC = () => {
 
   const fetchWorlds = async () => {
     try {
-      const response = await api.get<string[]>('/api/stats/worlds');
+      const response = await api.get<string[]>('/stats/worlds');
       setWorlds(response.data);
       if (response.data.length > 0) {
         setSelectedWorld(response.data[0]);
@@ -86,8 +86,8 @@ const WorldStats: React.FC = () => {
     try {
       setLoading(true);
       const [expResponse, activeResponse] = await Promise.all([
-        api.get<ServerStats[]>(`/api/stats/worlds/${selectedWorld}/exp-history?days=30`),
-        api.get<ServerStats[]>(`/api/stats/worlds/${selectedWorld}/active-history?days=30`),
+        api.get<ServerStats[]>(`/stats/worlds/${selectedWorld}/exp-history?days=30`),
+        api.get<ServerStats[]>(`/stats/worlds/${selectedWorld}/active-history?days=30`),
       ]);
       
       setExpHistory(expResponse.data);
