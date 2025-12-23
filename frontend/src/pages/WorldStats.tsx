@@ -351,13 +351,7 @@ const WorldStats: React.FC = () => {
                   <InputLabel>Tipo</InputLabel>
                   <Select
                     value={rankingType}
-                    onChange={(e) => {
-                      setRankingType(e.target.value as 'accumulated' | 'average');
-                      // Força reordenação quando o tipo muda
-                      setTimeout(() => {
-                        fetchRanking();
-                      }, 0);
-                    }}
+                    onChange={(e) => setRankingType(e.target.value as 'accumulated' | 'average')}
                     label="Tipo"
                   >
                     <MenuItem value="accumulated">Acumulada</MenuItem>
