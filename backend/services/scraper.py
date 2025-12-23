@@ -116,6 +116,22 @@ async def scrape_character_data(character_name: str, db: Session, world: str = N
         soup = BeautifulSoup(html_content, 'html.parser')
         logger.info(f"HTML parseado para {character_name}")
         
+        # Verifica se a página é uma página de erro (personagem não encontrado)
+        # A página de erro contém "Could not find any player" ou "Could not find any guild"
+        page_text = soup.get_text().lower()
+        if 'could not find any player' in page_text or 'could not find any guild' in page_text:
+            logger.warning(f"Personagem {character_name} não encontrado no servidor Taleon (página de erro detectada)")
+            return False
+        
+        # Verifica se há uma tabela de busca (indicando que o personagem não foi encontrado)
+        search_table = soup.find('table', {'class': 'table table-striped'})
+        if search_table:
+            # Verifica se contém mensagem de erro
+            search_text = search_table.get_text().lower()
+            if 'could not find any player' in search_text:
+                logger.warning(f"Personagem {character_name} não encontrado (tabela de busca detectada)")
+                return False
+        
         # Encontra a tabela com as informações do personagem
         character_table = soup.find('table', {'class': 'table'})
         if not character_table:
@@ -125,6 +141,13 @@ async def scrape_character_data(character_name: str, db: Session, world: str = N
                 logger.error(f"Nenhuma tabela encontrada para: {character_name}")
                 logger.error(f"HTML recebido: {html_content[:500]}...")  # Log dos primeiros 500 caracteres
                 return False
+        
+        # Verifica se a tabela encontrada é realmente uma tabela de perfil de personagem
+        # Tabelas de perfil têm campos como "Name:", "Level:", "Vocation:", etc.
+        table_text = character_table.get_text().lower()
+        if 'could not find' in table_text or 'players' in table_text and 'guilds' in table_text:
+            logger.warning(f"Tabela encontrada é uma tabela de busca, não um perfil de personagem: {character_name}")
+            return False
         
         # Log da estrutura da tabela
         logger.info(f"Estrutura da tabela encontrada: {character_table.prettify()[:500]}")
