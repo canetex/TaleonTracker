@@ -1,12 +1,11 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import Box from '@mui/material/Box';
 
 import Navbar from './components/Navbar';
 import CookieConsent from './components/CookieConsent';
-import Dashboard from './pages/Dashboard';
 import CharacterList from './pages/CharacterList';
 import CharacterDetail from './pages/CharacterDetail';
 import CharacterCompare from './pages/CharacterCompare';
@@ -42,7 +41,7 @@ function App() {
             }}
           >
             <Routes>
-              <Route path="/" element={<Dashboard />} />
+              <Route path="/" element={<Navigate to="/characters" replace />} />
               <Route path="/characters" element={<CharacterList />} />
               <Route path="/characters/:id" element={<CharacterDetail />} />
               <Route path="/characters/compare" element={<CharacterCompare />} />

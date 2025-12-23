@@ -16,7 +16,7 @@ const Navbar: React.FC = () => {
         <Typography
           variant="h6"
           component={RouterLink}
-          to="/"
+          to="/characters"
           sx={{
             flexGrow: 1,
             textDecoration: 'none',
