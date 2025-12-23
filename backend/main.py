@@ -53,7 +53,8 @@ static_dir = "/app/static"
 outfits_dir = "/app/static/outfits"
 os.makedirs(static_dir, exist_ok=True)
 os.makedirs(outfits_dir, exist_ok=True)
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
+# Monta em /api/static para corresponder ao roteamento do Caddy
+app.mount("/api/static", StaticFiles(directory=static_dir), name="static")
 
 @app.get("/")
 async def root():
