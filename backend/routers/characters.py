@@ -83,6 +83,7 @@ async def create_character(character: CharacterCreate, db: Session = Depends(get
         logger.error(f"Erro ao criar personagem: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("")
 @router.get("/")
 async def list_characters(db: Session = Depends(get_db)):
     """
