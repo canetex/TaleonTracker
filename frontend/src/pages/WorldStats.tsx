@@ -383,10 +383,15 @@ const WorldStats: React.FC = () => {
                         <TableRow key={char.character_id}>
                           <TableCell>{char.rank}</TableCell>
                           <TableCell>{char.name}</TableCell>
-                          <TableCell>{char.world.charAt(0).toUpperCase() + char.world.slice(1)}</TableCell>
+                          <TableCell>{(char.world || '').charAt(0).toUpperCase() + (char.world || '').slice(1)}</TableCell>
                           <TableCell>{char.vocation}</TableCell>
                           <TableCell align="right">
-                            {(rankingType === 'accumulated' ? char.accumulated_experience : char.average_experience || char.max_experience).toLocaleString()}
+                            {(() => {
+                              const value = rankingType === 'accumulated' 
+                                ? (char.accumulated_experience ?? char.max_experience ?? 0)
+                                : (char.average_experience ?? char.max_experience ?? 0);
+                              return (value || 0).toLocaleString();
+                            })()}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -400,9 +405,12 @@ const WorldStats: React.FC = () => {
                       datasets: [
                         {
                           label: rankingType === 'accumulated' ? 'EXP Acumulada' : 'EXP Média',
-                          data: ranking.slice(0, 10).map((char) => 
-                            rankingType === 'accumulated' ? char.accumulated_experience : char.average_experience || char.max_experience
-                          ),
+                          data: ranking.slice(0, 10).map((char) => {
+                            const value = rankingType === 'accumulated' 
+                              ? (char.accumulated_experience ?? char.max_experience ?? 0)
+                              : (char.average_experience ?? char.max_experience ?? 0);
+                            return value || 0;
+                          }),
                           backgroundColor: 'rgba(75, 192, 192, 0.6)',
                           borderColor: 'rgb(75, 192, 192)',
                           borderWidth: 1,
