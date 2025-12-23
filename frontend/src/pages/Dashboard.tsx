@@ -79,7 +79,7 @@ const Dashboard: React.FC = () => {
   const averageLevel = totalCharacters > 0 
     ? Math.round(characters.reduce((sum, char) => sum + (char.level || 0), 0) / totalCharacters)
     : 0;
-  const worlds = [...new Set(characters.map(char => char.world).filter(Boolean))];
+  const worlds = Array.from(new Set(characters.map(char => char.world).filter(Boolean)));
 
   return (
     <Box>
