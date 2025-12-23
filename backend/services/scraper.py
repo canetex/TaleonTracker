@@ -54,8 +54,10 @@ async def get_character_html(character_name: str, world: str = None, use_cache: 
             logger.info(f"Fazendo requisição para: {url}")
             logger.info(f"Headers da requisição: {headers}")
             
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, headers=headers, timeout=10) as response:
+            # Timeout mais robusto: 15 segundos para conexão, 20 segundos total
+            timeout = aiohttp.ClientTimeout(total=20, connect=15)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(url, headers=headers) as response:
                     response.raise_for_status()
                     logger.info(f"Status da resposta: {response.status}")
                     logger.info(f"Headers da resposta: {response.headers}")
@@ -83,8 +85,9 @@ async def get_character_html(character_name: str, world: str = None, use_cache: 
     # Se nenhum mundo funcionou, tenta com o padrão
     try:
         url = f"{TALEON_BASE_URL}/characterprofile.php?name={encoded_name}"
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=headers, timeout=10) as response:
+        timeout = aiohttp.ClientTimeout(total=20, connect=15)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(url, headers=headers) as response:
                 response.raise_for_status()
                 html_content = await response.text()
                 world_detected = "san"  # Padrão
@@ -93,12 +96,20 @@ async def get_character_html(character_name: str, world: str = None, use_cache: 
         logger.error(f"Erro ao obter HTML para {character_name}: {str(e)}")
         raise
 
-async def scrape_character_data(character_name: str, db: Session, world: str = None) -> bool:
+async def scrape_character_data(character_name: str, db: Session, world: str = None, use_cache: bool = True) -> bool:
+    """
+    Scrapes character data from Taleon website
+    Complexidade: O(1) - requisição HTTP única
+    """
     try:
-        logger.info(f"Iniciando scraping do personagem: {character_name}")
+        logger.info(f"Iniciando scraping do personagem: {character_name} (mundo: {world})")
         
         # Obtém o HTML (com cache se disponível)
-        html_content, world_detected = await get_character_html(character_name, world, use_cache=True)
+        # Adiciona timeout adicional aqui também
+        html_content, world_detected = await asyncio.wait_for(
+            get_character_html(character_name, world, use_cache=use_cache),
+            timeout=25  # Timeout de 25 segundos para obter HTML
+        )
         logger.info(f"HTML obtido com sucesso para {character_name} no mundo {world_detected}")
         logger.info(f"Primeiros 1000 caracteres do HTML: {html_content[:1000]}")
         
@@ -280,20 +291,33 @@ async def update_all_characters():
         success_count = 0
         error_count = 0
         
+        timeout_seconds = 30  # Timeout de 30 segundos por personagem
+        
         for idx, character in enumerate(characters, 1):
             logger.info(f"[{idx}/{total}] Atualizando personagem: {character.name}")
             try:
-                # Chama get_character_html sem cache para evitar problemas de inicialização
-                result = await scrape_character_data(character.name, db)
-                if result:
-                    success_count += 1
-                    logger.info(f"[{idx}/{total}] Personagem {character.name} atualizado com sucesso")
-                else:
+                # Adiciona timeout para evitar travar em um personagem
+                try:
+                    result = await asyncio.wait_for(
+                        scrape_character_data(character.name, db, character.world, use_cache=False),
+                        timeout=timeout_seconds
+                    )
+                    if result:
+                        success_count += 1
+                        logger.info(f"[{idx}/{total}] Personagem {character.name} atualizado com sucesso")
+                    else:
+                        error_count += 1
+                        logger.warning(f"[{idx}/{total}] Falha ao atualizar {character.name}")
+                except asyncio.TimeoutError:
                     error_count += 1
-                    logger.warning(f"[{idx}/{total}] Falha ao atualizar {character.name}")
+                    logger.error(f"[{idx}/{total}] Timeout ao atualizar {character.name} (>{timeout_seconds}s)")
+                except Exception as e:
+                    error_count += 1
+                    logger.error(f"[{idx}/{total}] Erro ao atualizar {character.name}: {str(e)}")
             except Exception as e:
                 error_count += 1
-                logger.error(f"[{idx}/{total}] Erro ao atualizar {character.name}: {str(e)}")
+                logger.error(f"[{idx}/{total}] Erro inesperado ao processar {character.name}: {str(e)}")
+            
             # Adiciona um delay entre as requisições para não sobrecarregar o servidor
             await asyncio.sleep(2)
         
