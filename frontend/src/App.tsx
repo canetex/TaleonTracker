@@ -9,6 +9,7 @@ import CookieConsent from './components/CookieConsent';
 import Dashboard from './pages/Dashboard';
 import CharacterList from './pages/CharacterList';
 import CharacterDetail from './pages/CharacterDetail';
+import CharacterCompare from './pages/CharacterCompare';
 import WorldStats from './pages/WorldStats';
 
 const theme = createTheme({
@@ -44,6 +45,7 @@ function App() {
               <Route path="/" element={<Dashboard />} />
               <Route path="/characters" element={<CharacterList />} />
               <Route path="/characters/:id" element={<CharacterDetail />} />
+              <Route path="/characters/compare" element={<CharacterCompare />} />
               <Route path="/stats" element={<WorldStats />} />
             </Routes>
           </Box>

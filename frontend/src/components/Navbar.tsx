@@ -43,6 +43,14 @@ const Navbar: React.FC = () => {
             Estatísticas
           </Button>
           <Button
+            color="inherit"
+            component={RouterLink}
+            to="/characters/compare"
+            sx={{ mr: 2 }}
+          >
+            Comparar
+          </Button>
+          <Button
             variant="contained"
             color="secondary"
             startIcon={<AddIcon />}
