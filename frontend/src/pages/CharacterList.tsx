@@ -14,6 +14,7 @@ import {
   TextField,
   InputAdornment,
   IconButton,
+  Paper,
 } from '@mui/material';
 import { Refresh as RefreshIcon, Search as SearchIcon, Star as StarIcon, StarBorder as StarBorderIcon } from '@mui/icons-material';
 
@@ -132,6 +133,40 @@ const CharacterList: React.FC = () => {
       <Typography variant="h4" component="h1" gutterBottom>
         Personagens
       </Typography>
+
+      {/* Estatísticas Gerais */}
+      <Grid container spacing={3} mb={3}>
+        <Grid item xs={12} sm={6} md={4}>
+          <Paper sx={{ p: 2, textAlign: 'center' }}>
+            <Typography variant="h6" color="primary">
+              {totalCharacters}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Total de Personagens
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} sm={6} md={4}>
+          <Paper sx={{ p: 2, textAlign: 'center' }}>
+            <Typography variant="h6" color="primary">
+              {averageLevel}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Nível Médio
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} sm={6} md={4}>
+          <Paper sx={{ p: 2, textAlign: 'center' }}>
+            <Typography variant="h6" color="primary">
+              {totalDailyExperience.toLocaleString()}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              EXP no Dia de Hoje
+            </Typography>
+          </Paper>
+        </Grid>
+      </Grid>
 
       <Box mb={3}>
         <AddCharacterForm onAdd={handleAddCharacter} />

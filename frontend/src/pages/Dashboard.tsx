@@ -177,41 +177,64 @@ const Dashboard: React.FC = () => {
                 </Grid>
               </Grid>
 
-              {character.history && character.history.length > 0 ? (
-                <Line
-                  data={{
-                    labels: character.history
-                      .slice()
-                      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-                      .map((h: CharacterHistory) =>
+              {character.history && character.history.length > 0 ? (() => {
+                const sortedHistory = character.history
+                  .slice()
+                  .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+                
+                // Calcula média diária de experiência
+                let averageDailyExp = 0;
+                if (sortedHistory.length > 1) {
+                  const firstExp = sortedHistory[0].experience;
+                  const lastExp = sortedHistory[sortedHistory.length - 1].experience;
+                  const totalExpGained = lastExp - firstExp;
+                  const firstDate = new Date(sortedHistory[0].timestamp);
+                  const lastDate = new Date(sortedHistory[sortedHistory.length - 1].timestamp);
+                  const daysDiff = Math.max(1, Math.ceil((lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24)));
+                  averageDailyExp = totalExpGained / daysDiff;
+                }
+                
+                return (
+                  <Line
+                    data={{
+                      labels: sortedHistory.map((h: CharacterHistory) =>
                         new Date(h.timestamp).toLocaleDateString()
                       ),
-                    datasets: [
-                      {
-                        label: 'Nível',
-                        data: character.history
-                          .slice()
-                          .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-                          .map((h: CharacterHistory) => h.level),
-                        borderColor: 'rgb(75, 192, 192)',
-                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                        tension: 0.1,
-                        yAxisID: 'y',
-                      },
-                      {
-                        label: 'Experiência',
-                        data: character.history
-                          .slice()
-                          .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-                          .map((h: CharacterHistory) => h.experience),
-                        borderColor: 'rgb(255, 99, 132)',
-                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                        tension: 0.1,
-                        yAxisID: 'y1',
-                      },
-                    ],
-                  }}
-                  options={{
+                      datasets: [
+                        {
+                          label: 'Nível',
+                          data: sortedHistory.map((h: CharacterHistory) => h.level),
+                          borderColor: 'rgb(75, 192, 192)',
+                          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                          tension: 0.1,
+                          yAxisID: 'y',
+                        },
+                        {
+                          label: 'Experiência',
+                          data: sortedHistory.map((h: CharacterHistory) => h.experience),
+                          borderColor: 'rgb(255, 99, 132)',
+                          backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                          tension: 0.1,
+                          yAxisID: 'y1',
+                        },
+                        ...(averageDailyExp > 0 ? [{
+                          label: 'Média Diária de EXP',
+                          data: sortedHistory.map((_, index) => {
+                            const firstExp = sortedHistory[0].experience;
+                            return firstExp + averageDailyExp * index;
+                          }),
+                          borderColor: 'rgba(255, 206, 86, 0.8)',
+                          backgroundColor: 'rgba(255, 206, 86, 0.1)',
+                          borderDash: [5, 5],
+                          borderWidth: 2,
+                          pointRadius: 0,
+                          tension: 0,
+                          yAxisID: 'y1',
+                          fill: false,
+                        }] : []),
+                      ],
+                    }}
+                    options={{
                     responsive: true,
                     interaction: {
                       mode: 'index' as const,
@@ -243,11 +266,12 @@ const Dashboard: React.FC = () => {
                         grid: {
                           drawOnChartArea: false,
                         },
-                      },
                     },
-                  }}
-                />
-              ) : (
+                  },
+                }}
+                  />
+                );
+              })() : (
                 <Typography variant="body2" color="text.secondary" align="center">
                   Sem histórico disponível
                 </Typography>

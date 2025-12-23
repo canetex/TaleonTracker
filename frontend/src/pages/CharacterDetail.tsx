@@ -57,13 +57,13 @@ const CharacterDetail: React.FC = () => {
 
   useEffect(() => {
     fetchCharacter();
-  }, [id]);
+  }, [id, daysFilter]);
 
   const fetchCharacter = async () => {
     if (!id) return;
     try {
       setLoading(true);
-      const response = await getCharacterHistory(parseInt(id));
+      const response = await getCharacterHistory(parseInt(id), daysFilter);
       setCharacter(response);
       setError(null);
     } catch (err) {
@@ -130,6 +130,18 @@ const CharacterDetail: React.FC = () => {
     .sort((a: CharacterHistory, b: CharacterHistory) => 
       new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
+
+  // Calcula média diária de experiência no intervalo
+  let averageDailyExp = 0;
+  if (history.length > 1) {
+    const firstExp = history[0].experience;
+    const lastExp = history[history.length - 1].experience;
+    const totalExpGained = lastExp - firstExp;
+    const firstDate = new Date(history[0].timestamp);
+    const lastDate = new Date(history[history.length - 1].timestamp);
+    const daysDiff = Math.max(1, Math.ceil((lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24)));
+    averageDailyExp = totalExpGained / daysDiff;
+  }
 
   return (
     <Box>
@@ -230,6 +242,22 @@ const CharacterDetail: React.FC = () => {
                       tension: 0.1,
                       yAxisID: 'y1',
                     },
+                    ...(averageDailyExp > 0 ? [{
+                      label: 'Média Diária de EXP',
+                      data: history.map(() => {
+                        // Linha horizontal baseada na primeira experiência + média diária acumulada
+                        const firstExp = history[0].experience;
+                        return firstExp + averageDailyExp * (history.length - 1);
+                      }),
+                      borderColor: 'rgba(255, 206, 86, 0.8)',
+                      backgroundColor: 'rgba(255, 206, 86, 0.1)',
+                      borderDash: [5, 5],
+                      borderWidth: 2,
+                      pointRadius: 0,
+                      tension: 0,
+                      yAxisID: 'y1',
+                      fill: false,
+                    }] : []),
                   ],
                 }}
                 options={{
