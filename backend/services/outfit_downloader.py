@@ -23,9 +23,12 @@ async def download_outfit(outfit_url: str, character_id: int, world: str) -> str
         if not outfit_url:
             return ""
         
-        # Se já é um caminho local, retorna como está
-        if outfit_url.startswith("/static/outfits/") or outfit_url.startswith("static/outfits/"):
+        # Se já é um caminho local, retorna como está (normaliza para /api/static/outfits/)
+        if outfit_url.startswith("/api/static/outfits/") or outfit_url.startswith("api/static/outfits/"):
             return outfit_url
+        # Se é um caminho antigo sem /api, normaliza
+        if outfit_url.startswith("/static/outfits/") or outfit_url.startswith("static/outfits/"):
+            return f"/api{outfit_url}" if not outfit_url.startswith("/") else f"/api{outfit_url}"
         
         # Extrai o nome do arquivo da URL
         parsed_url = urlparse(outfit_url)
@@ -41,7 +44,7 @@ async def download_outfit(outfit_url: str, character_id: int, world: str) -> str
         
         # Se o arquivo já existe, retorna o caminho
         if local_path.exists():
-            return f"/static/outfits/{local_filename}"
+            return f"/api/static/outfits/{local_filename}"
         
         # Faz o download da imagem
         async with aiohttp.ClientSession() as session:
@@ -66,7 +69,7 @@ async def download_outfit(outfit_url: str, character_id: int, world: str) -> str
                     f.write(content)
                 
                 logger.info(f"Outfit salvo em {local_path}")
-                return f"/static/outfits/{local_filename}"
+                return f"/api/static/outfits/{local_filename}"
     
     except Exception as e:
         logger.error(f"Erro ao baixar outfit {outfit_url}: {str(e)}")
