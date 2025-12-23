@@ -21,7 +21,6 @@ import { Refresh as RefreshIcon, Search as SearchIcon, Star as StarIcon, StarBor
 import { getCharacters, updateCharacter, addFavorite, removeFavorite, getFavorites } from '../services/api';
 import type { Character } from '../types';
 import { formatNumber, formatDate, getOutfitUrl } from '../utils/format';
-import AddCharacterForm from '../components/AddCharacterForm';
 
 const CharacterList: React.FC = () => {
   const navigate = useNavigate();
@@ -97,15 +96,6 @@ const CharacterList: React.FC = () => {
     ? Math.round(characters.reduce((sum, char) => sum + (char.level || 0), 0) / totalCharacters)
     : 0;
 
-  const handleAddCharacter = async () => {
-    try {
-      await fetchCharacters();
-    } catch (err: any) {
-      console.error('Erro ao atualizar lista:', err);
-      setError('Erro ao atualizar lista de personagens');
-    }
-  };
-
   const handleUpdateCharacter = async (id: number) => {
     try {
       setUpdatingId(id);
@@ -174,10 +164,6 @@ const CharacterList: React.FC = () => {
           </Paper>
         </Grid>
       </Grid>
-
-      <Box mb={3}>
-        <AddCharacterForm onAdd={handleAddCharacter} />
-      </Box>
 
       <Box mb={3} sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
         <TextField
