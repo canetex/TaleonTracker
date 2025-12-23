@@ -17,6 +17,11 @@ import {
   Paper,
   FormControlLabel,
   Checkbox,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  SelectChangeEvent,
 } from '@mui/material';
 import { Refresh as RefreshIcon, Search as SearchIcon, Star as StarIcon, StarBorder as StarBorderIcon } from '@mui/icons-material';
 
@@ -34,6 +39,7 @@ const CharacterList: React.FC = () => {
   const [worldFilter, setWorldFilter] = useState<string>('');
   const [favorites, setFavorites] = useState<number[]>([]);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState<boolean>(false);
+  const [experienceDaysFilter, setExperienceDaysFilter] = useState<number>(0); // 0 = desativado
 
   const fetchCharacters = async () => {
     try {
@@ -89,9 +95,40 @@ const CharacterList: React.FC = () => {
       const matchesWorld = !worldFilter || 
         character.world.toLowerCase().includes(worldFilter.toLowerCase());
       const matchesFavorites = !showFavoritesOnly || favorites.includes(character.id);
-      return matchesSearch && matchesWorld && matchesFavorites;
+      
+      // Filtro de experiência nos últimos dias
+      const matchesExperienceDays = !experienceDaysFilter || (() => {
+        if (experienceDaysFilter === 0) return true;
+        
+        // Verifica se tem experiência diária > 0
+        if (character.daily_experience > 0) {
+          // Verifica se a última atualização está dentro do intervalo
+          const lastUpdated = new Date(character.last_updated);
+          const cutoffDate = new Date();
+          cutoffDate.setDate(cutoffDate.getDate() - experienceDaysFilter);
+          
+          if (lastUpdated >= cutoffDate) {
+            return true;
+          }
+        }
+        
+        // Verifica histórico recente
+        if (character.history && character.history.length > 0) {
+          const recentHistory = character.history.filter((h) => {
+            const historyDate = new Date(h.timestamp);
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - experienceDaysFilter);
+            return historyDate >= cutoffDate && (h.daily_experience > 0 || h.experience > 0);
+          });
+          return recentHistory.length > 0;
+        }
+        
+        return false;
+      })();
+      
+      return matchesSearch && matchesWorld && matchesFavorites && matchesExperienceDays;
     });
-  }, [characters, searchTerm, worldFilter, showFavoritesOnly, favorites]);
+  }, [characters, searchTerm, worldFilter, showFavoritesOnly, favorites, experienceDaysFilter]);
 
   // Calcula estatísticas gerais - O(n) onde n é o número de personagens
   const totalCharacters = characters.length;
@@ -199,6 +236,23 @@ const CharacterList: React.FC = () => {
           }
           label="Apenas Favoritos"
         />
+        <FormControl sx={{ minWidth: 200 }}>
+          <InputLabel>Chars com EXP nos últimos dias</InputLabel>
+          <Select
+            value={experienceDaysFilter}
+            onChange={(e: SelectChangeEvent<number>) => setExperienceDaysFilter(e.target.value as number)}
+            label="Chars com EXP nos últimos dias"
+          >
+            <MenuItem value={0}>Todos</MenuItem>
+            <MenuItem value={1}>1 dia</MenuItem>
+            <MenuItem value={3}>3 dias</MenuItem>
+            <MenuItem value={7}>7 dias</MenuItem>
+            <MenuItem value={15}>15 dias</MenuItem>
+            <MenuItem value={30}>30 dias</MenuItem>
+            <MenuItem value={60}>60 dias</MenuItem>
+            <MenuItem value={90}>90 dias</MenuItem>
+          </Select>
+        </FormControl>
       </Box>
 
       {error && (
