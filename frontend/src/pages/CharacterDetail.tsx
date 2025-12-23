@@ -26,6 +26,7 @@ import {
 } from 'chart.js';
 import { getCharacterHistory, updateCharacter } from '../services/api';
 import { Character, CharacterHistory } from '../types';
+import { getOutfitUrl } from '../utils/format';
 
 ChartJS.register(
   CategoryScale,
@@ -152,30 +153,7 @@ const CharacterDetail: React.FC = () => {
               <Box display="flex" alignItems="center" gap={2}>
                 {character.outfit && (
                   <img 
-                    src={(() => {
-                      if (!character.outfit) return '';
-                      const outfit = character.outfit.trim();
-                      // Remove duplicações de /outfits/ se houver
-                      let cleanOutfit = outfit.replace(/\/+outfits\/+/g, '/outfits/');
-                      // Se já começa com /static/outfits/, usa diretamente
-                      if (cleanOutfit.startsWith('/static/outfits/')) {
-                        return `/api${cleanOutfit}`;
-                      }
-                      // Se começa com static/outfits/ (sem barra inicial), adiciona /api/
-                      if (cleanOutfit.startsWith('static/outfits/')) {
-                        return `/api/${cleanOutfit}`;
-                      }
-                      // Se começa com /outfits/, adiciona /api/static
-                      if (cleanOutfit.startsWith('/outfits/')) {
-                        return `/api/static${cleanOutfit}`;
-                      }
-                      // Se é URL completa, usa diretamente
-                      if (cleanOutfit.startsWith('http')) {
-                        return cleanOutfit;
-                      }
-                      // Caso contrário, assume que é apenas o nome do arquivo
-                      return `/api/static/outfits/${cleanOutfit}`;
-                    })()}
+                    src={getOutfitUrl(character.outfit)}
                     alt={`${character.name} outfit`}
                     style={{ width: 64, height: 64 }}
                     onError={(e) => {

@@ -20,7 +20,7 @@ import { Refresh as RefreshIcon, Search as SearchIcon, Star as StarIcon, StarBor
 
 import { getCharacters, updateCharacter, addFavorite, removeFavorite, getFavorites } from '../services/api';
 import type { Character } from '../types';
-import { formatNumber, formatDate } from '../utils/format';
+import { formatNumber, formatDate, getOutfitUrl } from '../utils/format';
 import AddCharacterForm from '../components/AddCharacterForm';
 
 const CharacterList: React.FC = () => {
@@ -221,30 +221,7 @@ const CharacterList: React.FC = () => {
                 <Box display="flex" alignItems="center" gap={2} mb={1}>
                   {character.outfit && (
                     <img 
-                      src={(() => {
-                        if (!character.outfit) return '';
-                        const outfit = character.outfit.trim();
-                        // Remove duplicações de /outfits/ se houver
-                        let cleanOutfit = outfit.replace(/\/+outfits\/+/g, '/outfits/');
-                        // Se já começa com /static/outfits/, usa diretamente
-                        if (cleanOutfit.startsWith('/static/outfits/')) {
-                          return `/api${cleanOutfit}`;
-                        }
-                        // Se começa com static/outfits/ (sem barra inicial), adiciona /api/
-                        if (cleanOutfit.startsWith('static/outfits/')) {
-                          return `/api/${cleanOutfit}`;
-                        }
-                        // Se começa com /outfits/, adiciona /api/static
-                        if (cleanOutfit.startsWith('/outfits/')) {
-                          return `/api/static${cleanOutfit}`;
-                        }
-                        // Se é URL completa, usa diretamente
-                        if (cleanOutfit.startsWith('http')) {
-                          return cleanOutfit;
-                        }
-                        // Caso contrário, assume que é apenas o nome do arquivo
-                        return `/api/static/outfits/${cleanOutfit}`;
-                      })()}
+                      src={getOutfitUrl(character.outfit)}
                       alt={`${character.name} outfit`}
                       style={{ width: 48, height: 48 }}
                       onError={(e) => {
