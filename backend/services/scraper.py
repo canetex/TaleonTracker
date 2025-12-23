@@ -142,6 +142,27 @@ async def scrape_character_data(character_name: str, db: Session, world: str = N
         # Log dos dados encontrados
         logger.info(f"Dados encontrados para {character_name}: {character_data}")
         
+        # Procura pela tabela "Experience History" para extrair experiência diária
+        daily_experience = 0
+        experience_history_heading = soup.find(string=re.compile('Experience History', re.I))
+        if experience_history_heading:
+            # Encontra a tabela após o heading
+            experience_table = experience_history_heading.find_parent().find_next('table')
+            if experience_table:
+                rows = experience_table.find_all('tr')
+                for row in rows:
+                    cols = row.find_all('td')
+                    if len(cols) >= 2:
+                        date_col = cols[0].text.strip()
+                        exp_col = cols[1].text.strip()
+                        # Procura pela linha "Today"
+                        if date_col.lower() == 'today':
+                            # Remove pontos e vírgulas, mantém apenas números
+                            exp_text = re.sub(r'[^\d]', '', exp_col)
+                            daily_experience = float(exp_text) if exp_text else 0
+                            logger.info(f"Experiência diária (Today) extraída: {daily_experience}")
+                            break
+        
         # Atualiza o personagem no banco de dados
         character = db.query(Character).filter(Character.name == character_name).first()
         if character:
@@ -173,7 +194,6 @@ async def scrape_character_data(character_name: str, db: Session, world: str = N
                 
                 # Extrai experiência e mortes
                 experience = 0
-                daily_experience = 0
                 deaths = 0
                 
                 # Tenta extrair experiência
@@ -183,14 +203,6 @@ async def scrape_character_data(character_name: str, db: Session, world: str = N
                     exp_text = re.sub(r'[^\d]', '', exp_text)
                     experience = float(exp_text) if exp_text else 0
                     logger.info(f"Experiência extraída de '{exp_text}' para {experience}")
-                
-                # Tenta extrair experiência diária
-                daily_exp_text = character_data.get('daily_experience', '0')
-                if daily_exp_text:
-                    # Remove caracteres não numéricos
-                    daily_exp_text = re.sub(r'[^\d]', '', daily_exp_text)
-                    daily_experience = float(daily_exp_text) if daily_exp_text else 0
-                    logger.info(f"Experiência diária extraída de '{daily_exp_text}' para {daily_experience}")
                 
                 # Tenta extrair mortes
                 deaths_text = character_data.get('deaths', '0')
