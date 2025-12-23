@@ -1,8 +1,36 @@
 {
-    email seu-email@exemplo.com
+    auto_https off
 }
 
-taleon-tracker.com {
-    reverse_proxy frontend:3000
-    reverse_proxy /api/* backend:8000
-} 
+:80 {
+    encode gzip zstd
+
+    # Libera CORS para chamadas do frontend
+    header {
+        Access-Control-Allow-Origin *
+        Access-Control-Allow-Methods *
+        Access-Control-Allow-Headers *
+    }
+
+    @api path /api/*
+    handle @api {
+        reverse_proxy backend:8000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # Demais rotas vão para o frontend
+    handle {
+        reverse_proxy frontend:3000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    log
+}
