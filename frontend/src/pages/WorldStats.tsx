@@ -130,12 +130,23 @@ const WorldStats: React.FC = () => {
   };
 
   const fetchRanking = async () => {
+    if (!selectedWorld) return;
     try {
       const daysParam = rankingDays > 0 ? `&days=${rankingDays}` : '&days=0';
       const worldParam = selectedWorld ? `&world=${selectedWorld}` : '';
       const typeParam = `&type=${rankingType}`;
       const response = await api.get<any[]>(`/ranking/experience?limit=20${daysParam}${worldParam}${typeParam}`);
-      setRanking(response.data);
+      // Garante que os dados estão ordenados decrescentemente (backend já envia ordenado, mas garantimos aqui também)
+      const sortedData = [...response.data].sort((a, b) => {
+        const aValue = rankingType === 'accumulated' 
+          ? (a.accumulated_experience ?? a.max_experience ?? 0)
+          : (a.average_experience ?? a.max_experience ?? 0);
+        const bValue = rankingType === 'accumulated'
+          ? (b.accumulated_experience ?? b.max_experience ?? 0)
+          : (b.average_experience ?? b.max_experience ?? 0);
+        return bValue - aValue; // Ordem decrescente
+      });
+      setRanking(sortedData);
     } catch (err) {
       console.error('Erro ao carregar ranking:', err);
     }
