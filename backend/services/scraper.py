@@ -28,8 +28,7 @@ TALEON_WORLDS = {
 }
 TALEON_BASE_URL = TALEON_WORLDS["San"]  # Padrão: San
 
-@cache(expire=300)  # Cache por 5 minutos
-async def get_character_html(character_name: str, world: str = None) -> Tuple[str, str]:
+async def get_character_html(character_name: str, world: str = None, use_cache: bool = True) -> Tuple[str, str]:
     """
     Obtém o HTML do perfil do personagem com cache
     Retorna (html_content, world_detected)
@@ -98,8 +97,8 @@ async def scrape_character_data(character_name: str, db: Session, world: str = N
     try:
         logger.info(f"Iniciando scraping do personagem: {character_name}")
         
-        # Obtém o HTML com cache
-        html_content, world_detected = await get_character_html(character_name, world)
+        # Obtém o HTML (com cache se disponível)
+        html_content, world_detected = await get_character_html(character_name, world, use_cache=True)
         logger.info(f"HTML obtido com sucesso para {character_name} no mundo {world_detected}")
         logger.info(f"Primeiros 1000 caracteres do HTML: {html_content[:1000]}")
         
@@ -272,36 +271,32 @@ async def update_all_characters():
     Atualiza todos os personagens cadastrados.
     """
     from database import SessionLocal
-    from fastapi_cache import FastAPICache
-    from fastapi_cache.backends.redis import RedisBackend
-    from redis import asyncio as aioredis
-    
-    # Inicializa o cache se ainda não foi inicializado
-    try:
-        if not FastAPICache.get_backend():
-            try:
-                redis = aioredis.from_url("redis://localhost", encoding="utf8", decode_responses=True)
-                FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")
-                logger.info("Cache inicializado para update_all_characters")
-            except Exception as e:
-                logger.warning(f"Erro ao inicializar cache (continuando sem cache): {str(e)}")
-    except:
-        pass  # Cache já inicializado ou não disponível
     
     db = SessionLocal()
     try:
         characters = db.query(Character).all()
         total = len(characters)
         logger.info(f"Iniciando atualização de {total} personagens")
+        success_count = 0
+        error_count = 0
+        
         for idx, character in enumerate(characters, 1):
             logger.info(f"[{idx}/{total}] Atualizando personagem: {character.name}")
             try:
-                await scrape_character_data(character.name, db)
-                logger.info(f"[{idx}/{total}] Personagem {character.name} atualizado com sucesso")
+                # Chama get_character_html sem cache para evitar problemas de inicialização
+                result = await scrape_character_data(character.name, db)
+                if result:
+                    success_count += 1
+                    logger.info(f"[{idx}/{total}] Personagem {character.name} atualizado com sucesso")
+                else:
+                    error_count += 1
+                    logger.warning(f"[{idx}/{total}] Falha ao atualizar {character.name}")
             except Exception as e:
+                error_count += 1
                 logger.error(f"[{idx}/{total}] Erro ao atualizar {character.name}: {str(e)}")
             # Adiciona um delay entre as requisições para não sobrecarregar o servidor
             await asyncio.sleep(2)
-        logger.info(f"Atualização completa finalizada. {total} personagens processados.")
+        
+        logger.info(f"Atualização completa finalizada. Total: {total}, Sucesso: {success_count}, Erros: {error_count}")
     finally:
         db.close()

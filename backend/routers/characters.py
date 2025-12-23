@@ -156,7 +156,7 @@ async def update_character(character_id: int, db: Session = Depends(get_db)):
         
         logger.info(f"Atualizando personagem: {character.name}")
         
-        if not await scrape_character_data(character.name, db):
+        if not await scrape_character_data(character.name, db, use_cache=True):
             logger.error(f"Falha ao atualizar dados do personagem {character.name}")
             raise HTTPException(status_code=500, detail="Erro ao atualizar dados do personagem")
         
