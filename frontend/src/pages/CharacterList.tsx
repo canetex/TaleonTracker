@@ -230,7 +230,7 @@ const CharacterList: React.FC = () => {
               {totalDailyExperience.toLocaleString()}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              EXP no Dia de Hoje
+              EXP nas últimas 24hs
             </Typography>
           </Paper>
         </Grid>
