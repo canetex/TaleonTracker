@@ -27,10 +27,19 @@ TALEON_WORLDS = {
 TALEON_BASE_URL = TALEON_WORLDS["San"]  # Padrão: San
 
 @cache(expire=300)  # Cache por 5 minutos
-async def get_character_html(character_name: str) -> str:
-    """Obtém o HTML do perfil do personagem com cache"""
+async def get_character_html(character_name: str, world: str = None) -> tuple[str, str]:
+    """
+    Obtém o HTML do perfil do personagem com cache
+    Retorna (html_content, world_detected)
+    """
     encoded_name = quote(character_name)
-    url = f"{TALEON_BASE_URL}/characterprofile.php?name={encoded_name}"
+    
+    # Se não especificado, tenta ambos os mundos
+    worlds_to_try = [world] if world else ["San", "Aura"]
+    
+    for world_name in worlds_to_try:
+        base_url = TALEON_WORLDS.get(world_name, TALEON_BASE_URL)
+        url = f"{base_url}/characterprofile.php?name={encoded_name}"
     
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -56,20 +65,36 @@ async def get_character_html(character_name: str) -> str:
                 
                 if len(html_content) < 100:
                     logger.error(f"HTML muito curto, possivel erro na resposta: {html_content}")
-                    raise Exception("HTML muito curto, possivel erro na resposta")
+                    continue  # Tenta próximo mundo
                 
-                return html_content
+                # Detecta o mundo pela URL
+                world_detected = world_name.lower() if world_name else "san"
+                if "san.taleon.online" in url:
+                    world_detected = "san"
+                elif "aura.taleon.online" in url:
+                    world_detected = "aura"
+                
+                return html_content, world_detected
+    
+    # Se nenhum mundo funcionou, tenta com o padrão
+    url = f"{TALEON_BASE_URL}/characterprofile.php?name={encoded_name}"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=headers, timeout=10) as response:
+            response.raise_for_status()
+            html_content = await response.text()
+            world_detected = "san"  # Padrão
+            return html_content, world_detected
     except Exception as e:
         logger.error(f"Erro ao obter HTML para {character_name}: {str(e)}")
         raise
 
-async def scrape_character_data(character_name: str, db: Session) -> bool:
+async def scrape_character_data(character_name: str, db: Session, world: str = None) -> bool:
     try:
         logger.info(f"Iniciando scraping do personagem: {character_name}")
         
         # Obtém o HTML com cache
-        html_content = await get_character_html(character_name)
-        logger.info(f"HTML obtido com sucesso para {character_name}")
+        html_content, world_detected = await get_character_html(character_name, world)
+        logger.info(f"HTML obtido com sucesso para {character_name} no mundo {world_detected}")
         logger.info(f"Primeiros 1000 caracteres do HTML: {html_content[:1000]}")
         
         soup = BeautifulSoup(html_content, 'html.parser')
@@ -123,7 +148,7 @@ async def scrape_character_data(character_name: str, db: Session) -> bool:
                 level = int(level_text.replace('.', ''))
                 character.level = level
                 character.vocation = character_data.get('vocation', '')
-                character.world = character_data.get('residence', '')  # Usando residence como world
+                character.world = world_detected  # Usa o mundo detectado pela URL
                 character.outfit = character_data.get('outfit', '')  # Salva o outfit
                 character.name = character_data.get('name', character_name)  # Atualiza o nome formatado
                 

@@ -79,7 +79,13 @@ const Dashboard: React.FC = () => {
   const averageLevel = totalCharacters > 0 
     ? Math.round(characters.reduce((sum, char) => sum + (char.level || 0), 0) / totalCharacters)
     : 0;
-  const worlds = Array.from(new Set(characters.map(char => char.world).filter(Boolean)));
+  // Filtra apenas os mundos válidos (san e aura)
+  const validWorlds = ['san', 'aura'];
+  const worlds = Array.from(new Set(
+    characters
+      .map(char => char.world?.toLowerCase())
+      .filter(world => world && validWorlds.includes(world))
+  )).map(w => w.charAt(0).toUpperCase() + w.slice(1));
 
   return (
     <Box>
