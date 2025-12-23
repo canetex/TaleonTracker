@@ -7,6 +7,7 @@ from models.character import Character
 from models.character_history import CharacterHistory
 from schemas.character import CharacterCreate, CharacterResponse
 from services.scraper import scrape_character_data, update_all_characters
+from services.character_discovery import discover_and_add_characters
 import logging
 
 router = APIRouter()
@@ -204,4 +205,25 @@ async def update_all_characters_endpoint():
         return {"message": "Atualização de todos os personagens iniciada em background"}
     except Exception as e:
         logger.error(f"Erro ao iniciar atualização completa: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/discover")
+async def discover_characters_endpoint(db: Session = Depends(get_db)):
+    """
+    Descobre e adiciona automaticamente personagens dos rankings e mortes do Taleon.
+    Extrai personagens de:
+    - Powergamers (Aura e San)
+    - Deaths (Aura e San)
+    """
+    try:
+        import asyncio
+        logger.info("Iniciando descoberta de personagens")
+        # Executa em background para não bloquear a resposta
+        stats = await discover_and_add_characters(db)
+        return {
+            "message": "Descoberta de personagens concluída",
+            "stats": stats
+        }
+    except Exception as e:
+        logger.error(f"Erro ao descobrir personagens: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

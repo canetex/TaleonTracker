@@ -33,6 +33,19 @@ async def startup():
     except Exception as e:
         logger.error(f"Erro ao inicializar cache: {str(e)}")
         raise
+    
+    # Inicializa scheduler para tarefas agendadas
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler
+        from services.scheduler import schedule_daily_scrape, schedule_character_discovery
+        
+        scheduler = BackgroundScheduler()
+        schedule_daily_scrape(scheduler)
+        schedule_character_discovery(scheduler)
+        scheduler.start()
+        logger.info("Scheduler inicializado com sucesso")
+    except Exception as e:
+        logger.warning(f"Erro ao inicializar scheduler (continuando sem agendamentos): {str(e)}")
 
 # Incluir routers
 app.include_router(characters.router, prefix="/api/characters", tags=["characters"])

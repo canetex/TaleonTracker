@@ -1,8 +1,11 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime
 import logging
+import asyncio
 
 from services.scraper import update_all_characters
+from services.character_discovery import discover_and_add_characters
+from database import SessionLocal
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -25,4 +28,36 @@ def schedule_daily_scrape(scheduler: BackgroundScheduler):
         )
         logger.info("Agendamento diário configurado com sucesso para 00:01 (Brasília)")
     except Exception as e:
-        logger.error(f"Erro ao configurar agendamento: {str(e)}") 
+        logger.error(f"Erro ao configurar agendamento: {str(e)}")
+
+def schedule_character_discovery(scheduler: BackgroundScheduler):
+    """
+    Agenda a descoberta de novos personagens diariamente às 02h00.
+    """
+    try:
+        def run_discovery():
+            """Wrapper síncrono para executar a função assíncrona"""
+            db = SessionLocal()
+            try:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                stats = loop.run_until_complete(discover_and_add_characters(db))
+                logger.info(f"Descoberta de personagens concluída: {stats}")
+            finally:
+                db.close()
+                loop.close()
+        
+        # Agenda a execução para 02h00 todos os dias
+        scheduler.add_job(
+            run_discovery,
+            'cron',
+            hour=2,
+            minute=0,
+            id='character_discovery',
+            name='Descoberta automática de personagens',
+            replace_existing=True,
+            timezone='America/Sao_Paulo'
+        )
+        logger.info("Agendamento de descoberta de personagens configurado para 02:00 (Brasília)")
+    except Exception as e:
+        logger.error(f"Erro ao configurar agendamento de descoberta: {str(e)}") 
