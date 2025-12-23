@@ -37,10 +37,6 @@ async def get_character_html(character_name: str, world: str = None) -> tuple[st
     # Se não especificado, tenta ambos os mundos
     worlds_to_try = [world] if world else ["San", "Aura"]
     
-    for world_name in worlds_to_try:
-        base_url = TALEON_WORLDS.get(world_name, TALEON_BASE_URL)
-        url = f"{base_url}/characterprofile.php?name={encoded_name}"
-    
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -49,41 +45,49 @@ async def get_character_html(character_name: str, world: str = None) -> tuple[st
         'Upgrade-Insecure-Requests': '1'
     }
     
+    for world_name in worlds_to_try:
+        try:
+            base_url = TALEON_WORLDS.get(world_name, TALEON_BASE_URL)
+            url = f"{base_url}/characterprofile.php?name={encoded_name}"
+            
+            logger.info(f"Fazendo requisição para: {url}")
+            logger.info(f"Headers da requisição: {headers}")
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers, timeout=10) as response:
+                    response.raise_for_status()
+                    logger.info(f"Status da resposta: {response.status}")
+                    logger.info(f"Headers da resposta: {response.headers}")
+                    
+                    html_content = await response.text()
+                    logger.info(f"HTML recebido para {character_name} (tamanho: {len(html_content)})")
+                    logger.info(f"Primeiros 1000 caracteres do HTML: {html_content[:1000]}")
+                    
+                    if len(html_content) < 100:
+                        logger.error(f"HTML muito curto, possivel erro na resposta: {html_content}")
+                        continue  # Tenta próximo mundo
+                    
+                    # Detecta o mundo pela URL
+                    world_detected = world_name.lower() if world_name else "san"
+                    if "san.taleon.online" in url:
+                        world_detected = "san"
+                    elif "aura.taleon.online" in url:
+                        world_detected = "aura"
+                    
+                    return html_content, world_detected
+        except Exception as e:
+            logger.warning(f"Erro ao obter HTML de {world_name} para {character_name}: {str(e)}")
+            continue  # Tenta próximo mundo
+    
+    # Se nenhum mundo funcionou, tenta com o padrão
     try:
-        logger.info(f"Fazendo requisição para: {url}")
-        logger.info(f"Headers da requisição: {headers}")
-        
+        url = f"{TALEON_BASE_URL}/characterprofile.php?name={encoded_name}"
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers, timeout=10) as response:
                 response.raise_for_status()
-                logger.info(f"Status da resposta: {response.status}")
-                logger.info(f"Headers da resposta: {response.headers}")
-                
                 html_content = await response.text()
-                logger.info(f"HTML recebido para {character_name} (tamanho: {len(html_content)})")
-                logger.info(f"Primeiros 1000 caracteres do HTML: {html_content[:1000]}")
-                
-                if len(html_content) < 100:
-                    logger.error(f"HTML muito curto, possivel erro na resposta: {html_content}")
-                    continue  # Tenta próximo mundo
-                
-                # Detecta o mundo pela URL
-                world_detected = world_name.lower() if world_name else "san"
-                if "san.taleon.online" in url:
-                    world_detected = "san"
-                elif "aura.taleon.online" in url:
-                    world_detected = "aura"
-                
+                world_detected = "san"  # Padrão
                 return html_content, world_detected
-    
-    # Se nenhum mundo funcionou, tenta com o padrão
-    url = f"{TALEON_BASE_URL}/characterprofile.php?name={encoded_name}"
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, headers=headers, timeout=10) as response:
-            response.raise_for_status()
-            html_content = await response.text()
-            world_detected = "san"  # Padrão
-            return html_content, world_detected
     except Exception as e:
         logger.error(f"Erro ao obter HTML para {character_name}: {str(e)}")
         raise
