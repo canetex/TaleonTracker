@@ -144,24 +144,48 @@ async def scrape_character_data(character_name: str, db: Session, world: str = N
         
         # Procura pela tabela "Experience History" para extrair experiência diária
         daily_experience = 0
-        experience_history_heading = soup.find(string=re.compile('Experience History', re.I))
-        if experience_history_heading:
-            # Encontra a tabela após o heading
-            experience_table = experience_history_heading.find_parent().find_next('table')
-            if experience_table:
-                rows = experience_table.find_all('tr')
+        # Procura por todas as tabelas e verifica se alguma tem "Experience History" como cabeçalho
+        all_tables = soup.find_all('table')
+        for table in all_tables:
+            # Verifica se a tabela anterior ou um heading próximo menciona "Experience History"
+            prev_elements = table.find_all_previous(['h3', 'h4', 'h5', 'strong', 'b'])
+            for elem in prev_elements[:5]:  # Verifica os 5 elementos anteriores mais próximos
+                if elem and re.search('Experience History', elem.get_text(), re.I):
+                    # Encontrou a tabela de Experience History
+                    rows = table.find_all('tr')
+                    for row in rows:
+                        cols = row.find_all('td')
+                        if len(cols) >= 2:
+                            date_col = cols[0].text.strip()
+                            exp_col = cols[1].text.strip()
+                            # Procura pela linha "Today"
+                            if date_col.lower() == 'today':
+                                # Remove pontos e vírgulas, mantém apenas números
+                                exp_text = re.sub(r'[^\d]', '', exp_col)
+                                daily_experience = float(exp_text) if exp_text else 0
+                                logger.info(f"Experiência diária (Today) extraída: {daily_experience} de '{exp_col}'")
+                                break
+                    if daily_experience > 0:
+                        break
+            if daily_experience > 0:
+                break
+        
+        # Se não encontrou, tenta procurar diretamente por "Today" em qualquer tabela
+        if daily_experience == 0:
+            for table in all_tables:
+                rows = table.find_all('tr')
                 for row in rows:
                     cols = row.find_all('td')
                     if len(cols) >= 2:
-                        date_col = cols[0].text.strip()
-                        exp_col = cols[1].text.strip()
-                        # Procura pela linha "Today"
-                        if date_col.lower() == 'today':
-                            # Remove pontos e vírgulas, mantém apenas números
+                        date_col = cols[0].text.strip().lower()
+                        if 'today' in date_col:
+                            exp_col = cols[1].text.strip()
                             exp_text = re.sub(r'[^\d]', '', exp_col)
                             daily_experience = float(exp_text) if exp_text else 0
-                            logger.info(f"Experiência diária (Today) extraída: {daily_experience}")
+                            logger.info(f"Experiência diária (Today) extraída (método alternativo): {daily_experience} de '{exp_col}'")
                             break
+                if daily_experience > 0:
+                    break
         
         # Atualiza o personagem no banco de dados
         character = db.query(Character).filter(Character.name == character_name).first()
