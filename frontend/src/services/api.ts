@@ -1,8 +1,9 @@
 import axios from 'axios';
 import type { Character, CharacterCreate, ApiResponse, ApiError } from '../types';
 
+// Usa URL relativa para funcionar através do proxy do Caddy
 const api = axios.create({
-  baseURL: 'http://192.168.1.200:8000',
+  baseURL: process.env.REACT_APP_API_URL || '/api',
 });
 
 export const getCharacters = async (): Promise<Character[]> => {

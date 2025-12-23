@@ -43,8 +43,9 @@ interface ServerStats {
   timestamp: string;
 }
 
+// Usa URL relativa para funcionar através do proxy do Caddy
 const api = axios.create({
-  baseURL: 'http://192.168.1.200:8000',
+  baseURL: process.env.REACT_APP_API_URL || '/api',
 });
 
 const WorldStats: React.FC = () => {
