@@ -38,6 +38,9 @@ app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(proxy.router, prefix="/api/proxy", tags=["proxy"])
 app.include_router(server_stats.router, prefix="/api/stats", tags=["stats"])
 
+# Configurar para não fazer redirect de trailing slash
+app.router.redirect_slashes = False
+
 @app.get("/")
 async def root():
     return {"message": "TaleonTracker API"}
