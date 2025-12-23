@@ -7,6 +7,7 @@ from database import get_db
 from models.character import Character
 from models.character_history import CharacterHistory
 import logging
+import math
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -71,13 +72,32 @@ async def get_experience_ranking(
                         'last_update': row.last_update
                     }
             
-            # Busca informações dos personagens
+            # Busca informações dos personagens e level mais recente
             char_ids = list(character_data.keys())
             if not char_ids:
                 return []
             
             characters = db.query(Character).filter(Character.id.in_(char_ids)).all()
             char_info = {char.id: char for char in characters}
+            
+            # Busca level mais recente de cada personagem
+            levels_query = db.query(
+                CharacterHistory.character_id,
+                func.max(CharacterHistory.timestamp).label('max_timestamp')
+            ).filter(
+                CharacterHistory.character_id.in_(char_ids)
+            ).group_by(CharacterHistory.character_id).subquery()
+            
+            levels_data = db.query(
+                CharacterHistory.character_id,
+                CharacterHistory.level
+            ).join(
+                levels_query,
+                (CharacterHistory.character_id == levels_query.c.character_id) &
+                (CharacterHistory.timestamp == levels_query.c.max_timestamp)
+            ).all()
+            
+            char_levels = {row.character_id: row.level for row in levels_data}
             
             # Monta ranking
             ranking_data = []
@@ -89,12 +109,13 @@ async def get_experience_ranking(
                         'name': char.name,
                         'world': char.world,
                         'vocation': char.vocation,
+                        'level': char_levels.get(char_id, char.level or 0),
                         'accumulated_experience': data['accumulated'],
                         'last_update': data['last_update']
                     })
             
-            # Ordena por experiência acumulada
-            ranking_data.sort(key=lambda x: x['accumulated_experience'], reverse=True)
+            # Ordena por experiência acumulada (decrescente)
+            ranking_data.sort(key=lambda x: float(x['accumulated_experience']), reverse=True)
             ranking_data = ranking_data[:limit]
             
             ranking = []
@@ -105,8 +126,9 @@ async def get_experience_ranking(
                     "name": data['name'],
                     "world": data['world'],
                     "vocation": data['vocation'],
-                    "accumulated_experience": data['accumulated_experience'],
-                    "max_experience": data['accumulated_experience'],
+                    "level": int(data['level']) if data['level'] else 0,
+                    "accumulated_experience": math.ceil(float(data['accumulated_experience'])),
+                    "max_experience": math.ceil(float(data['accumulated_experience'])),
                     "last_update": data['last_update'].isoformat() if data['last_update'] else None
                 })
         else:
@@ -150,13 +172,32 @@ async def get_experience_ranking(
                 avg_exp = total_exp_gained / interval_days
                 character_avg[char_id] = avg_exp
             
-            # Busca informações dos personagens e última atualização
+            # Busca informações dos personagens, level e última atualização
             char_ids = list(character_avg.keys())
             if not char_ids:
                 return []
             
             characters = db.query(Character).filter(Character.id.in_(char_ids)).all()
             char_info = {char.id: char for char in characters}
+            
+            # Busca level mais recente de cada personagem
+            levels_query = db.query(
+                CharacterHistory.character_id,
+                func.max(CharacterHistory.timestamp).label('max_timestamp')
+            ).filter(
+                CharacterHistory.character_id.in_(char_ids)
+            ).group_by(CharacterHistory.character_id).subquery()
+            
+            levels_data = db.query(
+                CharacterHistory.character_id,
+                CharacterHistory.level
+            ).join(
+                levels_query,
+                (CharacterHistory.character_id == levels_query.c.character_id) &
+                (CharacterHistory.timestamp == levels_query.c.max_timestamp)
+            ).all()
+            
+            char_levels = {row.character_id: row.level for row in levels_data}
             
             # Busca última atualização de uma vez
             last_updates_query = db.query(
@@ -178,6 +219,7 @@ async def get_experience_ranking(
                         'name': char.name,
                         'world': char.world,
                         'vocation': char.vocation,
+                        'level': char_levels.get(char_id, char.level or 0),
                         'average_experience': avg_exp,
                         'last_update': last_updates.get(char_id)
                     })
@@ -185,9 +227,6 @@ async def get_experience_ranking(
             # Ordena por experiência média (decrescente)
             ranking_data.sort(key=lambda x: float(x['average_experience']), reverse=True)
             ranking_data = ranking_data[:limit]
-            
-            # Log para debug
-            logger.info(f"Ranking ordenado (primeiros 5): {[(r['name'], r['average_experience']) for r in ranking_data[:5]]}")
             
             ranking = []
             for idx, data in enumerate(ranking_data, 1):
@@ -197,8 +236,9 @@ async def get_experience_ranking(
                     "name": data['name'],
                     "world": data['world'],
                     "vocation": data['vocation'],
-                    "average_experience": float(data['average_experience']),
-                    "max_experience": float(data['average_experience']),
+                    "level": int(data['level']) if data['level'] else 0,
+                    "average_experience": math.ceil(float(data['average_experience'])),
+                    "max_experience": math.ceil(float(data['average_experience'])),
                     "last_update": data['last_update'].isoformat() if data['last_update'] else None
                 })
         

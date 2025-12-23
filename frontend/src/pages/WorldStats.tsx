@@ -351,7 +351,13 @@ const WorldStats: React.FC = () => {
                   <InputLabel>Tipo</InputLabel>
                   <Select
                     value={rankingType}
-                    onChange={(e) => setRankingType(e.target.value as 'accumulated' | 'average')}
+                    onChange={(e) => {
+                      setRankingType(e.target.value as 'accumulated' | 'average');
+                      // Força reordenação quando o tipo muda
+                      setTimeout(() => {
+                        fetchRanking();
+                      }, 0);
+                    }}
                     label="Tipo"
                   >
                     <MenuItem value="accumulated">Acumulada</MenuItem>
@@ -382,6 +388,7 @@ const WorldStats: React.FC = () => {
                       <TableRow>
                         <TableCell>Rank</TableCell>
                         <TableCell>Nome</TableCell>
+                        <TableCell>Nível</TableCell>
                         <TableCell>Mundo</TableCell>
                         <TableCell>Vocação</TableCell>
                         <TableCell align="right">
@@ -394,6 +401,7 @@ const WorldStats: React.FC = () => {
                         <TableRow key={char.character_id}>
                           <TableCell>{char.rank}</TableCell>
                           <TableCell>{char.name}</TableCell>
+                          <TableCell>{(char as any).level || 'N/A'}</TableCell>
                           <TableCell>{(char.world || '').charAt(0).toUpperCase() + (char.world || '').slice(1)}</TableCell>
                           <TableCell>{char.vocation}</TableCell>
                           <TableCell align="right">
@@ -401,7 +409,8 @@ const WorldStats: React.FC = () => {
                               const value = rankingType === 'accumulated' 
                                 ? (char.accumulated_experience ?? char.max_experience ?? 0)
                                 : (char.average_experience ?? char.max_experience ?? 0);
-                              return (value || 0).toLocaleString();
+                              // Arredonda para cima e formata sem decimais
+                              return Math.ceil(value || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 });
                             })()}
                           </TableCell>
                         </TableRow>
@@ -420,7 +429,8 @@ const WorldStats: React.FC = () => {
                             const value = rankingType === 'accumulated' 
                               ? (char.accumulated_experience ?? char.max_experience ?? 0)
                               : (char.average_experience ?? char.max_experience ?? 0);
-                            return value || 0;
+                            // Arredonda para cima
+                            return Math.ceil(value || 0);
                           }),
                           backgroundColor: 'rgba(75, 192, 192, 0.6)',
                           borderColor: 'rgb(75, 192, 192)',
