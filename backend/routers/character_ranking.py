@@ -110,46 +110,94 @@ async def get_experience_ranking(
                     "last_update": data['last_update'].isoformat() if data['last_update'] else None
                 })
         else:
-            # Experiência média: média de todas as experiências no período
-            query = db.query(
-                Character.id,
-                Character.name,
-                Character.world,
-                Character.vocation,
-                func.avg(CharacterHistory.experience).label('average_experience'),
-                func.max(CharacterHistory.timestamp).label('last_update')
-            ).join(
-                CharacterHistory, Character.id == CharacterHistory.character_id
+            # Experiência média: SOMA(EXP_POR_DIA) / INTERVALO_DIAS
+            # Calcula experiência ganha por dia e depois faz a média
+            history_query = db.query(
+                CharacterHistory.character_id,
+                func.date(CharacterHistory.timestamp).label('date'),
+                func.max(CharacterHistory.experience).label('max_exp'),
+                func.min(CharacterHistory.experience).label('min_exp')
             )
             
             if cutoff_date:
-                query = query.filter(CharacterHistory.timestamp >= cutoff_date)
+                history_query = history_query.filter(CharacterHistory.timestamp >= cutoff_date)
             
+            history_query = history_query.group_by(
+                CharacterHistory.character_id,
+                func.date(CharacterHistory.timestamp)
+            )
+            
+            # Filtra por mundo através do Character
             if isinstance(world_filter, list):
-                query = query.filter(Character.world.in_(world_filter))
+                history_query = history_query.join(Character).filter(Character.world.in_(world_filter))
             else:
-                query = query.filter(Character.world == world_filter)
+                history_query = history_query.join(Character).filter(Character.world == world_filter)
             
-            results = query.group_by(
-                Character.id,
-                Character.name,
-                Character.world,
-                Character.vocation
-            ).order_by(
-                desc('average_experience')
-            ).limit(limit).all()
+            history_results = history_query.all()
+            
+            # Agrupa por personagem e calcula experiência média diária
+            character_daily_exp = {}
+            for row in history_results:
+                char_id = row.character_id
+                daily_exp = float(row.max_exp) - float(row.min_exp) if row.max_exp and row.min_exp else 0
+                if char_id not in character_daily_exp:
+                    character_daily_exp[char_id] = []
+                character_daily_exp[char_id].append(daily_exp)
+            
+            # Calcula média: soma de exp por dia / número de dias
+            character_avg = {}
+            interval_days = days if days > 0 else 1
+            for char_id, daily_exps in character_daily_exp.items():
+                total_exp = sum(daily_exps)
+                avg_exp = total_exp / interval_days
+                character_avg[char_id] = avg_exp
+            
+            # Busca informações dos personagens
+            char_ids = list(character_avg.keys())
+            if not char_ids:
+                return []
+            
+            characters = db.query(Character).filter(Character.id.in_(char_ids)).all()
+            char_info = {char.id: char for char in characters}
+            
+            # Busca última atualização
+            last_updates = {}
+            for char_id in char_ids:
+                last_history = db.query(CharacterHistory).filter(
+                    CharacterHistory.character_id == char_id
+                ).order_by(CharacterHistory.timestamp.desc()).first()
+                if last_history:
+                    last_updates[char_id] = last_history.timestamp
+            
+            # Monta ranking
+            ranking_data = []
+            for char_id, avg_exp in character_avg.items():
+                if char_id in char_info:
+                    char = char_info[char_id]
+                    ranking_data.append({
+                        'id': char_id,
+                        'name': char.name,
+                        'world': char.world,
+                        'vocation': char.vocation,
+                        'average_experience': avg_exp,
+                        'last_update': last_updates.get(char_id)
+                    })
+            
+            # Ordena por experiência média
+            ranking_data.sort(key=lambda x: x['average_experience'], reverse=True)
+            ranking_data = ranking_data[:limit]
             
             ranking = []
-            for idx, row in enumerate(results, 1):
+            for idx, data in enumerate(ranking_data, 1):
                 ranking.append({
                     "rank": idx,
-                    "character_id": row.id,
-                    "name": row.name,
-                    "world": row.world,
-                    "vocation": row.vocation,
-                    "average_experience": float(row.average_experience) if row.average_experience else 0,
-                    "max_experience": float(row.average_experience) if row.average_experience else 0,
-                    "last_update": row.last_update.isoformat() if row.last_update else None
+                    "character_id": data['id'],
+                    "name": data['name'],
+                    "world": data['world'],
+                    "vocation": data['vocation'],
+                    "average_experience": data['average_experience'],
+                    "max_experience": data['average_experience'],
+                    "last_update": data['last_update'].isoformat() if data['last_update'] else None
                 })
         
         return ranking

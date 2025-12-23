@@ -8,6 +8,10 @@ import {
   Button,
   CircularProgress,
   Alert,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import { Line } from 'react-chartjs-2';
 import {
@@ -33,12 +37,23 @@ ChartJS.register(
   Legend
 );
 
+const DAYS_OPTIONS = [
+  { value: 7, label: '7 dias' },
+  { value: 15, label: '15 dias' },
+  { value: 30, label: '30 dias' },
+  { value: 45, label: '45 dias' },
+  { value: 90, label: '90 dias' },
+  { value: 180, label: '180 dias' },
+  { value: 0, label: 'Todos' },
+];
+
 const CharacterDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [character, setCharacter] = useState<Character | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [daysFilter, setDaysFilter] = useState<number>(0);
 
   useEffect(() => {
     fetchCharacter();
@@ -98,7 +113,23 @@ const CharacterDetail: React.FC = () => {
   const latestHistory = character.history && character.history.length > 0 
     ? character.history[0] 
     : null;
-  const history = character.history || [];
+  
+  // Filtra histórico por intervalo de dias
+  let history = character.history || [];
+  if (daysFilter > 0 && history.length > 0) {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - daysFilter);
+    history = history.filter((h: CharacterHistory) => 
+      new Date(h.timestamp) >= cutoffDate
+    );
+  }
+  
+  // Ordena histórico por data (mais antigo primeiro para gráficos)
+  history = history
+    .slice()
+    .sort((a: CharacterHistory, b: CharacterHistory) => 
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
 
   return (
     <Box>
@@ -109,7 +140,11 @@ const CharacterDetail: React.FC = () => {
               <Box display="flex" alignItems="center" gap={2}>
                 {character.outfit && (
                   <img 
-                    src={character.outfit.startsWith('http') ? character.outfit : `https://${character.world === 'aura' ? 'aura' : 'san'}.taleon.online${character.outfit}`}
+                    src={character.outfit.startsWith('/static/') || character.outfit.startsWith('static/') 
+                      ? `/api${character.outfit.startsWith('/') ? '' : '/'}${character.outfit}`
+                      : character.outfit.startsWith('http') 
+                        ? character.outfit 
+                        : `/api/static/outfits/${character.outfit}`}
                     alt={`${character.name} outfit`}
                     style={{ width: 64, height: 64 }}
                     onError={(e) => {
@@ -154,24 +189,34 @@ const CharacterDetail: React.FC = () => {
         {history.length > 0 && (
           <Grid item xs={12}>
             <Paper sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                Progresso de Nível e Experiência
-              </Typography>
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                <Typography variant="h6">
+                  Progresso de Nível e Experiência
+                </Typography>
+                <FormControl size="small" sx={{ minWidth: 120 }}>
+                  <InputLabel>Período</InputLabel>
+                  <Select
+                    value={daysFilter}
+                    onChange={(e) => setDaysFilter(e.target.value as number)}
+                    label="Período"
+                  >
+                    {DAYS_OPTIONS.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
               <Line
                 data={{
-                  labels: history
-                    .slice()
-                    .reverse()
-                    .map((h: CharacterHistory) =>
-                      new Date(h.timestamp).toLocaleDateString()
-                    ),
+                  labels: history.map((h: CharacterHistory) =>
+                    new Date(h.timestamp).toLocaleDateString()
+                  ),
                   datasets: [
                     {
                       label: 'Nível',
-                      data: history
-                        .slice()
-                        .reverse()
-                        .map((h: CharacterHistory) => h.level),
+                      data: history.map((h: CharacterHistory) => h.level),
                       borderColor: 'rgb(75, 192, 192)',
                       backgroundColor: 'rgba(75, 192, 192, 0.2)',
                       tension: 0.1,
@@ -179,10 +224,7 @@ const CharacterDetail: React.FC = () => {
                     },
                     {
                       label: 'Experiência',
-                      data: history
-                        .slice()
-                        .reverse()
-                        .map((h: CharacterHistory) => h.experience),
+                      data: history.map((h: CharacterHistory) => h.experience),
                       borderColor: 'rgb(255, 99, 132)',
                       backgroundColor: 'rgba(255, 99, 132, 0.2)',
                       tension: 0.1,

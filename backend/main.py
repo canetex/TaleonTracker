@@ -1,10 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from routers import characters, auth, proxy, server_stats
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
 from redis import asyncio as aioredis
 import logging
+import os
 
 # Configuração de logging
 logging.basicConfig(level=logging.INFO)
@@ -45,6 +47,11 @@ app.include_router(favorites.router, prefix="/api/favorites", tags=["favorites"]
 # Importar e incluir router de ranking
 from routers import character_ranking
 app.include_router(character_ranking.router, prefix="/api", tags=["ranking"])
+
+# Monta diretório estático para servir outfits
+static_dir = "/app/static"
+os.makedirs(static_dir, exist_ok=True)
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 @app.get("/")
 async def root():

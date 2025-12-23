@@ -12,6 +12,7 @@ import time
 from fastapi_cache import FastAPICache
 from fastapi_cache.decorator import cache
 import asyncio
+from services.outfit_downloader import download_outfit
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -154,7 +155,20 @@ async def scrape_character_data(character_name: str, db: Session, world: str = N
                 character.level = level
                 character.vocation = character_data.get('vocation', '')
                 character.world = world_detected  # Usa o mundo detectado pela URL
-                character.outfit = character_data.get('outfit', '')  # Salva o outfit
+                
+                # Baixa e salva o outfit localmente
+                outfit_url = character_data.get('outfit', '')
+                if outfit_url:
+                    try:
+                        local_outfit_path = await download_outfit(outfit_url, character.id, world_detected)
+                        character.outfit = local_outfit_path
+                        logger.info(f"Outfit salvo localmente: {local_outfit_path}")
+                    except Exception as e:
+                        logger.error(f"Erro ao baixar outfit: {str(e)}")
+                        character.outfit = outfit_url  # Mantém URL original em caso de erro
+                else:
+                    character.outfit = ''
+                
                 character.name = character_data.get('name', character_name)  # Atualiza o nome formatado
                 
                 # Extrai experiência e mortes
