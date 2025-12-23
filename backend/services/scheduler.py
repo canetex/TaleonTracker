@@ -32,7 +32,7 @@ def schedule_daily_scrape(scheduler: BackgroundScheduler):
 
 def schedule_character_discovery(scheduler: BackgroundScheduler):
     """
-    Agenda a descoberta de novos personagens diariamente às 02h00.
+    Agenda a descoberta de novos personagens diariamente às 23h00.
     """
     try:
         def run_discovery():
@@ -47,17 +47,17 @@ def schedule_character_discovery(scheduler: BackgroundScheduler):
                 db.close()
                 loop.close()
         
-        # Agenda a execução para 02h00 todos os dias
+        # Agenda a execução para 23h00 todos os dias
         scheduler.add_job(
             run_discovery,
             'cron',
-            hour=2,
+            hour=23,
             minute=0,
             id='character_discovery',
             name='Descoberta automática de personagens',
             replace_existing=True,
             timezone='America/Sao_Paulo'
         )
-        logger.info("Agendamento de descoberta de personagens configurado para 02:00 (Brasília)")
+        logger.info("Agendamento de descoberta de personagens configurado para 23:00 (Brasília)")
     except Exception as e:
         logger.error(f"Erro ao configurar agendamento de descoberta: {str(e)}") 
