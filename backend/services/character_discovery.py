@@ -124,6 +124,10 @@ async def fetch_and_extract_characters(url: str, table_selector: str = None, tab
                 html_content = await response.text()
                 logger.info(f"HTML obtido de {url} (tamanho: {len(html_content)})")
                 
+                # Log uma amostra do HTML para debug
+                if len(html_content) > 0:
+                    logger.debug(f"Primeiros 2000 caracteres do HTML: {html_content[:2000]}")
+                
                 character_names = await extract_characters_from_table(html_content, table_selector, table_id)
                 logger.info(f"Extraídos {len(character_names)} personagens únicos de {url}")
                 return character_names
