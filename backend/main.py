@@ -50,7 +50,9 @@ app.include_router(character_ranking.router, prefix="/api", tags=["ranking"])
 
 # Monta diretório estático para servir outfits
 static_dir = "/app/static"
+outfits_dir = "/app/static/outfits"
 os.makedirs(static_dir, exist_ok=True)
+os.makedirs(outfits_dir, exist_ok=True)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 @app.get("/")
