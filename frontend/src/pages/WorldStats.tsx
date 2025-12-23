@@ -386,7 +386,7 @@ const WorldStats: React.FC = () => {
                         <TableCell>Mundo</TableCell>
                         <TableCell>Vocação</TableCell>
                         <TableCell align="right">
-                          {rankingType === 'accumulated' ? 'EXP Acumulada' : 'EXP Média'}
+                          {rankingType === 'accumulated' ? 'EXP Acumulada' : 'EXP Média Diária'}
                         </TableCell>
                       </TableRow>
                     </TableHead>
@@ -418,7 +418,7 @@ const WorldStats: React.FC = () => {
                       labels: ranking.slice(0, 10).map((char) => char.name),
                       datasets: [
                         {
-                          label: rankingType === 'accumulated' ? 'EXP Acumulada' : 'EXP Média',
+                          label: rankingType === 'accumulated' ? 'EXP Acumulada' : 'EXP Média Diária',
                           data: ranking.slice(0, 10).map((char) => {
                             const value = rankingType === 'accumulated' 
                               ? (char.accumulated_experience ?? char.max_experience ?? 0)
