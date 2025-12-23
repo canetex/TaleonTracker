@@ -152,11 +152,30 @@ const CharacterDetail: React.FC = () => {
               <Box display="flex" alignItems="center" gap={2}>
                 {character.outfit && (
                   <img 
-                    src={character.outfit.startsWith('/static/') || character.outfit.startsWith('static/') 
-                      ? `/api${character.outfit.startsWith('/') ? '' : '/'}${character.outfit}`
-                      : character.outfit.startsWith('http') 
-                        ? character.outfit 
-                        : `/api/static/outfits/${character.outfit}`}
+                    src={(() => {
+                      if (!character.outfit) return '';
+                      const outfit = character.outfit.trim();
+                      // Remove duplicações de /outfits/ se houver
+                      let cleanOutfit = outfit.replace(/\/+outfits\/+/g, '/outfits/');
+                      // Se já começa com /static/outfits/, usa diretamente
+                      if (cleanOutfit.startsWith('/static/outfits/')) {
+                        return `/api${cleanOutfit}`;
+                      }
+                      // Se começa com static/outfits/ (sem barra inicial), adiciona /api/
+                      if (cleanOutfit.startsWith('static/outfits/')) {
+                        return `/api/${cleanOutfit}`;
+                      }
+                      // Se começa com /outfits/, adiciona /api/static
+                      if (cleanOutfit.startsWith('/outfits/')) {
+                        return `/api/static${cleanOutfit}`;
+                      }
+                      // Se é URL completa, usa diretamente
+                      if (cleanOutfit.startsWith('http')) {
+                        return cleanOutfit;
+                      }
+                      // Caso contrário, assume que é apenas o nome do arquivo
+                      return `/api/static/outfits/${cleanOutfit}`;
+                    })()}
                     alt={`${character.name} outfit`}
                     style={{ width: 64, height: 64 }}
                     onError={(e) => {
