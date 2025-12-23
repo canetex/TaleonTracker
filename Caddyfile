@@ -2,6 +2,11 @@
     auto_https off
 }
 
+# Redirecionamento de HTTPS para HTTP
+:443 {
+    redir http://{host}{uri} permanent
+}
+
 :80 {
     encode gzip zstd
 
