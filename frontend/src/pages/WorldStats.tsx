@@ -415,7 +415,7 @@ const WorldStats: React.FC = () => {
                   </TableContainer>
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <Box>
+                  <Box sx={{ height: '100%', minHeight: '600px' }}>
                     <Bar
                       data={{
                         labels: ranking.slice(0, 20).map((char) => char.name),

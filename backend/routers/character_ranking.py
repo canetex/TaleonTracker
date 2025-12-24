@@ -39,11 +39,10 @@ async def get_experience_ranking(
             world_filter = ['san', 'aura']
         
         if type == "accumulated":
-            # Experiência acumulada: diferença entre primeira e última experiência no período
+            # Experiência acumulada: diferença entre experiência ANTES do período e última experiência no período
             # Primeiro, busca os personagens com histórico no período
             history_query = db.query(
                 CharacterHistory.character_id,
-                func.min(CharacterHistory.experience).label('min_exp'),
                 func.max(CharacterHistory.experience).label('max_exp'),
                 func.max(CharacterHistory.timestamp).label('last_update')
             )
@@ -61,16 +60,50 @@ async def get_experience_ranking(
             
             history_results = history_query.all()
             
+            # Para cada personagem, busca a experiência ANTES do período (se houver)
+            char_ids = [row.character_id for row in history_results]
+            if not char_ids:
+                return []
+            
+            # Busca experiência antes do período para cada personagem
+            initial_exp_query = db.query(
+                CharacterHistory.character_id,
+                func.max(CharacterHistory.timestamp).label('max_timestamp')
+            ).filter(
+                CharacterHistory.character_id.in_(char_ids)
+            )
+            
+            if cutoff_date:
+                initial_exp_query = initial_exp_query.filter(CharacterHistory.timestamp < cutoff_date)
+            
+            initial_exp_query = initial_exp_query.group_by(CharacterHistory.character_id).subquery()
+            
+            initial_exp_data = db.query(
+                CharacterHistory.character_id,
+                CharacterHistory.experience
+            ).join(
+                initial_exp_query,
+                (CharacterHistory.character_id == initial_exp_query.c.character_id) &
+                (CharacterHistory.timestamp == initial_exp_query.c.max_timestamp)
+            ).all()
+            
+            initial_exp_dict = {row.character_id: float(row.experience) for row in initial_exp_data}
+            
             # Calcula experiência acumulada e ordena
             character_data = {}
             for row in history_results:
                 char_id = row.character_id
-                accumulated = float(row.max_exp) - float(row.min_exp) if row.max_exp and row.min_exp else 0
-                if char_id not in character_data or accumulated > character_data[char_id]['accumulated']:
-                    character_data[char_id] = {
-                        'accumulated': accumulated,
-                        'last_update': row.last_update
-                    }
+                max_exp = float(row.max_exp) if row.max_exp else 0
+                # Se não há experiência inicial (antes do período), usa 0 como base
+                initial_exp = initial_exp_dict.get(char_id, 0)
+                accumulated = max_exp - initial_exp
+                # Só adiciona se a experiência acumulada for maior que 0
+                if accumulated > 0:
+                    if char_id not in character_data or accumulated > character_data[char_id]['accumulated']:
+                        character_data[char_id] = {
+                            'accumulated': accumulated,
+                            'last_update': row.last_update
+                        }
             
             # Busca informações dos personagens e level mais recente
             char_ids = list(character_data.keys())
@@ -170,7 +203,9 @@ async def get_experience_ranking(
                 
                 # Calcula média: experiência total / intervalo de dias
                 avg_exp = total_exp_gained / interval_days
-                character_avg[char_id] = avg_exp
+                # Só adiciona se a média for maior que 0
+                if avg_exp > 0:
+                    character_avg[char_id] = avg_exp
             
             # Busca informações dos personagens, level e última atualização
             char_ids = list(character_avg.keys())
@@ -224,7 +259,8 @@ async def get_experience_ranking(
                         'last_update': last_updates.get(char_id)
                     })
             
-            # Ordena por experiência média (decrescente)
+            # Filtra personagens com experiência média > 0 e ordena (decrescente)
+            ranking_data = [r for r in ranking_data if float(r['average_experience']) > 0]
             ranking_data.sort(key=lambda x: float(x['average_experience']), reverse=True)
             ranking_data = ranking_data[:limit]
             
