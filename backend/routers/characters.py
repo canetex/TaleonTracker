@@ -61,22 +61,39 @@ def enrich_character_response(character: Character, db: Session = None) -> Dict[
         except Exception as e:
             logger.warning(f"Erro ao buscar snapshot para {character.name}: {str(e)}")
     
-    # Calcula experiência diária se houver histórico anterior
-    # Ignora registros preenchidos (id = 0) para o cálculo
-    # Usa total_experience quando disponível
+    # Calcula experiência nas últimas 24 horas
+    # Busca registros reais das últimas 24 horas
+    from datetime import timedelta
+    now = datetime.utcnow()
+    last_24h = now - timedelta(hours=24)
+    
     daily_experience = 0
     real_history = [h for h in sorted_history if h.id > 0]  # Apenas registros reais
+    
     if len(real_history) >= 2:
-        # Diferença entre a experiência mais recente e a anterior (apenas registros reais)
+        # Busca o registro mais recente
         latest_real = real_history[0]
-        previous_real = real_history[1]
-        
-        # Usa total_experience se disponível, senão usa experience
         latest_exp = latest_real.total_experience if latest_real.total_experience is not None else latest_real.experience
-        previous_exp = previous_real.total_experience if previous_real.total_experience is not None else previous_real.experience
         
-        daily_experience = latest_exp - previous_exp
-        # Permite valores negativos (perda por morte)
+        # Busca o registro mais antigo dentro das últimas 24 horas
+        # Se não houver registro nas últimas 24h, usa o registro anterior mais próximo
+        previous_real = None
+        for h in real_history[1:]:
+            if h.timestamp >= last_24h:
+                previous_real = h
+                break
+        
+        # Se não encontrou registro nas últimas 24h, usa o registro anterior mais próximo
+        if previous_real is None and len(real_history) > 1:
+            previous_real = real_history[1]
+        
+        if previous_real:
+            previous_exp = previous_real.total_experience if previous_real.total_experience is not None else previous_real.experience
+            daily_experience = latest_exp - previous_exp
+            # Permite valores negativos (perda por morte)
+        else:
+            # Se não há registro anterior, usa o valor salvo do daily_experience
+            daily_experience = latest_real.daily_experience or 0
     elif len(real_history) == 1:
         # Se há apenas um registro real, usa o valor salvo
         daily_experience = real_history[0].daily_experience or 0
