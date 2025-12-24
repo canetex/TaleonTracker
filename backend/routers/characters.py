@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc, text
 from typing import List, Dict, Any
+from datetime import datetime, timedelta
 from database import get_db, engine
 from models.character import Character
 from models.character_history import CharacterHistory
@@ -145,8 +146,6 @@ async def get_character(character_id: int, days: int = 0, db: Session = Depends(
     days: filtra histórico pelos últimos N dias (0 = todos)
     Complexidade: O(m) onde m é o histórico do personagem
     """
-    from datetime import timedelta
-    
     character = db.query(Character).options(joinedload(Character.history)).filter(Character.id == character_id).first()
     if not character:
         raise HTTPException(status_code=404, detail="Personagem não encontrado")
