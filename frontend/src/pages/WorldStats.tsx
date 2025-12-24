@@ -135,7 +135,7 @@ const WorldStats: React.FC = () => {
       const daysParam = rankingDays > 0 ? `&days=${rankingDays}` : '&days=0';
       const worldParam = selectedWorld ? `&world=${selectedWorld}` : '';
       const typeParam = `&type=${rankingType}`;
-      const response = await api.get<any[]>(`/ranking/experience?limit=20${daysParam}${worldParam}${typeParam}`);
+      const response = await api.get<any[]>(`/ranking/experience?limit=100${daysParam}${worldParam}${typeParam}`);
       // Garante que os dados estão ordenados decrescentemente (backend já envia ordenado, mas garantimos aqui também)
       const sortedData = [...response.data].sort((a, b) => {
         const aValue = rankingType === 'accumulated' 
@@ -375,91 +375,96 @@ const WorldStats: React.FC = () => {
               </Box>
             </Box>
             {ranking.length > 0 ? (
-              <>
-                <TableContainer>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Rank</TableCell>
-                        <TableCell>Nome</TableCell>
-                        <TableCell>Nível</TableCell>
-                        <TableCell>Mundo</TableCell>
-                        <TableCell>Vocação</TableCell>
-                        <TableCell align="right">
-                          {rankingType === 'accumulated' ? 'EXP Acumulada' : 'EXP Média Diária'}
-                        </TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {ranking.map((char) => (
-                        <TableRow key={char.character_id}>
-                          <TableCell>{char.rank}</TableCell>
-                          <TableCell>{char.name}</TableCell>
-                          <TableCell>{(char as any).level || 'N/A'}</TableCell>
-                          <TableCell>{(char.world || '').charAt(0).toUpperCase() + (char.world || '').slice(1)}</TableCell>
-                          <TableCell>{char.vocation}</TableCell>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}>
+                  <TableContainer sx={{ maxHeight: 600, overflow: 'auto' }}>
+                    <Table stickyHeader>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Rank</TableCell>
+                          <TableCell>Nome</TableCell>
+                          <TableCell>Nível</TableCell>
+                          <TableCell>Mundo</TableCell>
+                          <TableCell>Vocação</TableCell>
                           <TableCell align="right">
-                            {(() => {
+                            {rankingType === 'accumulated' ? 'EXP Acumulada' : 'EXP Média Diária'}
+                          </TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {ranking.map((char) => (
+                          <TableRow key={char.character_id}>
+                            <TableCell>{char.rank}</TableCell>
+                            <TableCell>{char.name}</TableCell>
+                            <TableCell>{(char as any).level || 'N/A'}</TableCell>
+                            <TableCell>{(char.world || '').charAt(0).toUpperCase() + (char.world || '').slice(1)}</TableCell>
+                            <TableCell>{char.vocation}</TableCell>
+                            <TableCell align="right">
+                              {(() => {
+                                const value = rankingType === 'accumulated' 
+                                  ? (char.accumulated_experience ?? char.max_experience ?? 0)
+                                  : (char.average_experience ?? char.max_experience ?? 0);
+                                // Arredonda para cima e formata sem decimais
+                                return Math.ceil(value || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 });
+                              })()}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Box>
+                    <Bar
+                      data={{
+                        labels: ranking.slice(0, 20).map((char) => char.name),
+                        datasets: [
+                          {
+                            label: rankingType === 'accumulated' ? 'EXP Acumulada' : 'EXP Média Diária',
+                            data: ranking.slice(0, 20).map((char) => {
                               const value = rankingType === 'accumulated' 
                                 ? (char.accumulated_experience ?? char.max_experience ?? 0)
                                 : (char.average_experience ?? char.max_experience ?? 0);
-                              // Arredonda para cima e formata sem decimais
-                              return Math.ceil(value || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 });
-                            })()}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-                <Box mt={2}>
-                  <Bar
-                    data={{
-                      labels: ranking.slice(0, 10).map((char) => char.name),
-                      datasets: [
-                        {
-                          label: rankingType === 'accumulated' ? 'EXP Acumulada' : 'EXP Média Diária',
-                          data: ranking.slice(0, 10).map((char) => {
-                            const value = rankingType === 'accumulated' 
-                              ? (char.accumulated_experience ?? char.max_experience ?? 0)
-                              : (char.average_experience ?? char.max_experience ?? 0);
-                            // Arredonda para cima
-                            return Math.ceil(value || 0);
-                          }),
-                          backgroundColor: 'rgba(75, 192, 192, 0.6)',
-                          borderColor: 'rgb(75, 192, 192)',
-                          borderWidth: 1,
-                        },
-                      ],
-                    }}
-                    options={{
-                      responsive: true,
-                      plugins: {
-                        legend: {
-                          display: false,
-                        },
-                        tooltip: {
-                          callbacks: {
-                            label: function(context) {
-                              return `EXP: ${context.parsed.y.toLocaleString()}`;
+                              // Arredonda para cima
+                              return Math.ceil(value || 0);
+                            }),
+                            backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                            borderColor: 'rgb(75, 192, 192)',
+                            borderWidth: 1,
+                          },
+                        ],
+                      }}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: {
+                            display: false,
+                          },
+                          tooltip: {
+                            callbacks: {
+                              label: function(context) {
+                                return `EXP: ${context.parsed.y.toLocaleString()}`;
+                              },
                             },
                           },
                         },
-                      },
-                      scales: {
-                        y: {
-                          beginAtZero: false,
-                          ticks: {
-                            callback: function(value) {
-                              return Number(value).toLocaleString();
+                        scales: {
+                          y: {
+                            beginAtZero: false,
+                            ticks: {
+                              callback: function(value) {
+                                return Number(value).toLocaleString();
+                              },
                             },
                           },
                         },
-                      },
-                    }}
-                  />
-                </Box>
-              </>
+                      }}
+                    />
+                  </Box>
+                </Grid>
+              </Grid>
             ) : (
               <Typography variant="body2" color="text.secondary" align="center" p={4}>
                 Nenhum dado disponível para o ranking.

@@ -172,6 +172,14 @@ async def scrape_character_data(character_name: str, db: Session, world: str = N
                 character_data[key] = value
                 logger.info(f"Encontrado: {key} = {value}")
         
+        # Procura por informações de guild (pode estar em uma seção separada ou link)
+        guild_link = soup.find('a', href=re.compile(r'guildprofile\.php'))
+        if guild_link:
+            guild_name = guild_link.get_text(strip=True)
+            if guild_name:
+                character_data['guild'] = guild_name
+                logger.info(f"Guild encontrada: {guild_name}")
+        
         # Log dos dados encontrados
         logger.info(f"Dados encontrados para {character_name}: {character_data}")
         
@@ -233,6 +241,7 @@ async def scrape_character_data(character_name: str, db: Session, world: str = N
                 character.level = level
                 character.vocation = character_data.get('vocation', '')
                 character.world = world_detected  # Usa o mundo detectado pela URL
+                character.guild = character_data.get('guild', '')  # Extrai guild se disponível
                 
                 # Baixa e salva o outfit localmente
                 outfit_url = character_data.get('outfit', '')

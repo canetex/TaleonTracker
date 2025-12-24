@@ -50,15 +50,6 @@ const Navbar: React.FC = () => {
           >
             Comparar
           </Button>
-          <Button
-            variant="contained"
-            color="secondary"
-            startIcon={<AddIcon />}
-            component={RouterLink}
-            to="/characters/new"
-          >
-            Novo Personagem
-          </Button>
         </Box>
       </Toolbar>
     </AppBar>

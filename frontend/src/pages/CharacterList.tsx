@@ -37,6 +37,7 @@ const CharacterList: React.FC = () => {
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [worldFilter, setWorldFilter] = useState<string>('');
+  const [guildFilter, setGuildFilter] = useState<string>('');
   const [favorites, setFavorites] = useState<number[]>([]);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState<boolean>(false);
   const [experienceDaysFilter, setExperienceDaysFilter] = useState<number>(0); // 0 = desativado
@@ -94,6 +95,8 @@ const CharacterList: React.FC = () => {
         character.vocation.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesWorld = !worldFilter || 
         character.world.toLowerCase().includes(worldFilter.toLowerCase());
+      const matchesGuild = !guildFilter || 
+        (character.guild && character.guild.toLowerCase().includes(guildFilter.toLowerCase()));
       const matchesFavorites = !showFavoritesOnly || favorites.includes(character.id);
       
       // Filtro de experiência nos últimos dias
@@ -156,9 +159,9 @@ const CharacterList: React.FC = () => {
         return false;
       })();
       
-      return matchesSearch && matchesWorld && matchesFavorites && matchesExperienceDays;
+      return matchesSearch && matchesWorld && matchesGuild && matchesFavorites && matchesExperienceDays;
     });
-  }, [characters, searchTerm, worldFilter, showFavoritesOnly, favorites, experienceDaysFilter]);
+  }, [characters, searchTerm, worldFilter, guildFilter, showFavoritesOnly, favorites, experienceDaysFilter]);
 
   // Calcula estatísticas gerais - O(n) onde n é o número de personagens
   const totalCharacters = characters.length;
@@ -256,6 +259,12 @@ const CharacterList: React.FC = () => {
           onChange={(e) => setWorldFilter(e.target.value)}
           sx={{ minWidth: 200 }}
         />
+        <TextField
+          placeholder="Filtrar por guild..."
+          value={guildFilter}
+          onChange={(e) => setGuildFilter(e.target.value)}
+          sx={{ minWidth: 200 }}
+        />
         <FormControlLabel
           control={
             <Checkbox
@@ -333,9 +342,11 @@ const CharacterList: React.FC = () => {
                 <Typography color="textSecondary" gutterBottom>
                   Mundo: {character.world}
                 </Typography>
-                <Typography color="textSecondary" gutterBottom>
-                  Experiência: {formatNumber(character.experience)}
-                </Typography>
+                {character.guild && (
+                  <Typography color="textSecondary" gutterBottom>
+                    Guild: {character.guild}
+                  </Typography>
+                )}
                 <Typography color="textSecondary" gutterBottom>
                   Experiência nas últimas 24hs: {formatNumber(character.daily_experience)}
                 </Typography>
@@ -350,15 +361,6 @@ const CharacterList: React.FC = () => {
                   onClick={() => navigate(`/characters/${character.id}`)}
                 >
                   Detalhes
-                </Button>
-                <Button
-                  size="small"
-                  color="secondary"
-                  onClick={() => handleUpdateCharacter(character.id)}
-                  disabled={updatingId === character.id}
-                  startIcon={<RefreshIcon />}
-                >
-                  {updatingId === character.id ? "Atualizando..." : "Atualizar"}
                 </Button>
               </CardActions>
             </Card>

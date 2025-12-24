@@ -6,6 +6,7 @@ export interface Character {
   daily_experience: number;
   vocation: string;
   world: string;
+  guild?: string;
   outfit: string;
   last_updated: string;
   history: CharacterHistory[];

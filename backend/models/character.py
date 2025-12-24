@@ -12,6 +12,7 @@ class Character(Base):
     level = Column(Integer, default=0)
     vocation = Column(String, default='')
     world = Column(String, default='')
+    guild = Column(String, default='')  # Nome da guild
     outfit = Column(String, default='')  # URL da imagem do outfit
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
