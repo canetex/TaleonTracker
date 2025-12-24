@@ -64,33 +64,33 @@ def enrich_character_response(character: Character, db: Session = None) -> Dict[
         # Se há apenas um registro, não há como calcular diária
         daily_experience = 0
     
-      response = {
-          "id": character.id,
-          "name": character.name,
-          "level": level,
-          "vocation": character.vocation,
-          "world": character.world,
-          "guild": getattr(character, 'guild', '') or '',
-          "outfit": outfit,
-          "created_at": character.created_at,
-          "updated_at": character.updated_at,
-          "experience": experience,
-          "daily_experience": daily_experience,
-          "last_updated": latest_history.timestamp if latest_history else character.updated_at,
-          "history": [
-              {
-                  "id": h.id,
-                  "character_id": h.character_id,
-                  "level": h.level,
-                  "experience": h.experience,
-                  "daily_experience": h.daily_experience,
-                  "deaths": h.deaths,
-                  "timestamp": h.timestamp
-              }
-              for h in sorted_history
-          ]
-      }
-      return response
+    response = {
+        "id": character.id,
+        "name": character.name,
+        "level": level,
+        "vocation": character.vocation,
+        "world": character.world,
+        "guild": getattr(character, 'guild', '') or '',
+        "outfit": outfit,
+        "created_at": character.created_at,
+        "updated_at": character.updated_at,
+        "experience": experience,
+        "daily_experience": daily_experience,
+        "last_updated": latest_history.timestamp if latest_history else character.updated_at,
+        "history": [
+            {
+                "id": h.id,
+                "character_id": h.character_id,
+                "level": h.level,
+                "experience": h.experience,
+                "daily_experience": h.daily_experience,
+                "deaths": h.deaths,
+                "timestamp": h.timestamp
+            }
+            for h in sorted_history
+        ]
+    }
+    return response
 
 @router.post("/", response_model=CharacterResponse)
 async def create_character(character: CharacterCreate, db: Session = Depends(get_db)):
