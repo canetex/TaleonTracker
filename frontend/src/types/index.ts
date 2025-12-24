@@ -17,6 +17,7 @@ export interface CharacterHistory {
   character_id: number;
   level: number;
   experience: number;
+  total_experience?: number | null;
   daily_experience: number;
   deaths: number;
   timestamp: string;

@@ -27,6 +27,7 @@ import {
 import { getCharacterHistory, updateCharacter } from '../services/api';
 import { Character, CharacterHistory } from '../types';
 import { getOutfitUrl } from '../utils/format';
+import { getExperienceFromHistory, calculateExperienceForLevel } from '../utils/experienceTable';
 
 ChartJS.register(
   CategoryScale,
@@ -111,9 +112,12 @@ const CharacterDetail: React.FC = () => {
     );
   }
 
-  const latestHistory = character.history && character.history.length > 0 
-    ? character.history[0] 
-    : null;
+  // Ordena histórico por timestamp (mais recente primeiro)
+  const sortedHistory = character.history ? [...character.history].sort((a, b) => 
+    new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  ) : [];
+  
+  const latestHistory = sortedHistory.length > 0 ? sortedHistory[0] : null;
   
   // Filtra histórico por intervalo de dias
   let history = character.history || [];
@@ -132,11 +136,12 @@ const CharacterDetail: React.FC = () => {
       new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
 
-  // Calcula média diária de experiência no intervalo
+  // Calcula média diária de experiência no intervalo usando total_experience
   let averageDailyExp = 0;
   if (history.length > 1) {
-    const firstExp = history[0].experience;
-    const lastExp = history[history.length - 1].experience;
+    // Usa total_experience quando disponível, senão calcula baseado no level
+    const firstExp = getExperienceFromHistory(history[0]);
+    const lastExp = getExperienceFromHistory(history[history.length - 1]);
     const totalExpGained = lastExp - firstExp;
     const firstDate = new Date(history[0].timestamp);
     const lastDate = new Date(history[history.length - 1].timestamp);
@@ -193,7 +198,13 @@ const CharacterDetail: React.FC = () => {
               <Grid item xs={12} md={4}>
                 <Typography variant="subtitle1">Experiência</Typography>
                 <Typography variant="h6">
-                  {latestHistory ? latestHistory.experience.toLocaleString() : (character.experience || 0).toLocaleString()}
+                  {(() => {
+                    if (latestHistory) {
+                      const exp = getExperienceFromHistory(latestHistory);
+                      return exp.toLocaleString();
+                    }
+                    return (character.experience || 0).toLocaleString();
+                  })()}
                 </Typography>
               </Grid>
                 <Grid item xs={12} md={4}>
@@ -244,7 +255,7 @@ const CharacterDetail: React.FC = () => {
                     },
                     {
                       label: 'Experiência',
-                      data: history.map((h: CharacterHistory) => h.experience),
+                      data: history.map((h: CharacterHistory) => getExperienceFromHistory(h)),
                       borderColor: 'rgb(255, 99, 132)',
                       backgroundColor: 'rgba(255, 99, 132, 0.2)',
                       tension: 0.1,
@@ -254,7 +265,7 @@ const CharacterDetail: React.FC = () => {
                       label: 'Média Diária de EXP',
                       data: history.map((_, index) => {
                         // Linha que mostra o crescimento esperado baseado na média diária
-                        const firstExp = history[0].experience;
+                        const firstExp = getExperienceFromHistory(history[0]);
                         return firstExp + averageDailyExp * index;
                       }),
                       borderColor: 'rgba(255, 206, 86, 0.8)',

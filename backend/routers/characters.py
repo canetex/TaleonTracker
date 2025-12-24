@@ -33,7 +33,15 @@ def enrich_character_response(character: Character, db: Session = None) -> Dict[
     outfit = getattr(character, 'outfit', '') or ''
     
     if latest_history:
-        experience = latest_history.experience
+        # Usa total_experience se disponível, senão usa experience, senão calcula baseado no level
+        if latest_history.total_experience is not None:
+            experience = latest_history.total_experience
+        elif latest_history.experience:
+            experience = latest_history.experience
+        else:
+            # Calcula baseado no level usando a tabela do Tibia
+            from services.experience_lookup import get_experience_from_level_table
+            experience = get_experience_from_level_table(latest_history.level)
         level = latest_history.level
     elif db:
         # Busca do character_snapshots
@@ -55,15 +63,20 @@ def enrich_character_response(character: Character, db: Session = None) -> Dict[
     
     # Calcula experiência diária se houver histórico anterior
     # Ignora registros preenchidos (id = 0) para o cálculo
+    # Usa total_experience quando disponível
     daily_experience = 0
     real_history = [h for h in sorted_history if h.id > 0]  # Apenas registros reais
     if len(real_history) >= 2:
         # Diferença entre a experiência mais recente e a anterior (apenas registros reais)
         latest_real = real_history[0]
         previous_real = real_history[1]
-        daily_experience = latest_real.experience - previous_real.experience
-        if daily_experience < 0:
-            daily_experience = 0
+        
+        # Usa total_experience se disponível, senão usa experience
+        latest_exp = latest_real.total_experience if latest_real.total_experience is not None else latest_real.experience
+        previous_exp = previous_real.total_experience if previous_real.total_experience is not None else previous_real.experience
+        
+        daily_experience = latest_exp - previous_exp
+        # Permite valores negativos (perda por morte)
     elif len(real_history) == 1:
         # Se há apenas um registro real, usa o valor salvo
         daily_experience = real_history[0].daily_experience or 0
@@ -89,7 +102,8 @@ def enrich_character_response(character: Character, db: Session = None) -> Dict[
                 "id": h.id,
                 "character_id": h.character_id,
                 "level": h.level,
-                "experience": h.experience,
+                "experience": h.total_experience if h.total_experience is not None else h.experience,
+                "total_experience": h.total_experience,
                 "daily_experience": h.daily_experience,
                 "deaths": h.deaths,
                 "timestamp": h.timestamp
@@ -210,28 +224,40 @@ async def get_character(character_id: int, days: int = 0, db: Session = Depends(
             
             # Busca último histórico real para usar como base
             last_level = character.level or 0
-            last_experience = 0
+            last_total_experience = None
             if real_history:
                 # Usa o último registro real como base
                 last_real = real_history[-1]
                 last_level = last_real.get('level', character.level or 0)
-                last_experience = last_real.get('experience', 0)
+                # Prefere total_experience, senão usa experience
+                last_total_experience = last_real.get('total_experience')
+                if last_total_experience is None:
+                    last_total_experience = last_real.get('experience', 0)
+            
+            # Importa função para calcular experiência baseada no level
+            from services.experience_lookup import get_experience_from_level_table
             
             while current_date <= end_date:
                 if current_date in history_dict:
                     # Usa o valor existente (registro real)
                     h = history_dict[current_date]
                     last_level = h.get('level', last_level)
-                    last_experience = h.get('experience', last_experience)
+                    # Atualiza last_total_experience com total_experience ou experience
+                    if h.get('total_experience') is not None:
+                        last_total_experience = h.get('total_experience')
+                    elif h.get('experience'):
+                        last_total_experience = h.get('experience')
                     filled_history.append(h)
                 else:
-                    # Cria registro com experiência 0 quando não houver dados
-                    # Level mantém do último registro conhecido, mas experiência é 0
+                    # Quando não houver dados, calcula experiência baseada no level do dia
+                    # usando a tabela do Tibia
+                    calculated_exp = get_experience_from_level_table(last_level)
                     filled_history.append({
                         'id': 0,
                         'character_id': character_id,
                         'level': last_level,  # Mantém level do último registro
-                        'experience': 0,  # Experiência sempre 0 quando não houver dados
+                        'experience': calculated_exp,  # Calcula baseado no level usando tabela Tibia
+                        'total_experience': calculated_exp,
                         'daily_experience': 0,  # 0 de experiência no dia
                         'deaths': 0,
                         'timestamp': datetime.combine(current_date, datetime.min.time()).isoformat()
