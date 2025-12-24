@@ -76,6 +76,8 @@ async def get_experience_ranking(
             
             history_results = history_query.all()
             
+            logger.info(f"[Ranking] Calculando OVERALL para {len(history_results)} personagens")
+            
             # Calcula experiência acumulada (OVERALL)
             character_data = {}
             for row in history_results:
@@ -86,12 +88,17 @@ async def get_experience_ranking(
                 # OVERALL = (LAST_EXPERIENCE - INITIAL_EXPERIENCE)
                 accumulated = last_total_exp - first_total_exp
                 
+                logger.debug(f"[Ranking] Char {char_id}: first_exp={first_total_exp}, last_exp={last_total_exp}, "
+                           f"accumulated={accumulated}")
+                
                 # Só adiciona se a experiência acumulada for maior que 0
                 if accumulated > 0:
                     character_data[char_id] = {
                         'accumulated': accumulated,
                         'last_update': row.last_update
                     }
+            
+            logger.info(f"[Ranking] OVERALL calculado para {len(character_data)} personagens")
             
             # Busca informações dos personagens e level mais recente
             char_ids = list(character_data.keys())
@@ -195,6 +202,8 @@ async def get_experience_ranking(
             # DAYS = diferença real entre first_date e last_date
             character_avg = {}
             
+            logger.info(f"[Ranking] Calculando AVERAGE para {len(history_results)} personagens")
+            
             for row in history_results:
                 char_id = row.character_id
                 first_total_exp = float(row.first_total_exp) if row.first_total_exp else 0
@@ -215,9 +224,14 @@ async def get_experience_ranking(
                 # Calcula média: experiência total / dias reais
                 avg_exp = total_exp_gained / days_diff if days_diff > 0 else 0
                 
+                logger.debug(f"[Ranking] Char {char_id}: first_exp={first_total_exp}, last_exp={last_total_exp}, "
+                           f"gained={total_exp_gained}, days={days_diff}, avg={avg_exp}")
+                
                 # Só adiciona se a média for maior que 0
                 if avg_exp > 0:
                     character_avg[char_id] = avg_exp
+            
+            logger.info(f"[Ranking] AVERAGE calculado para {len(character_avg)} personagens")
             
             # Busca informações dos personagens, level e última atualização
             char_ids = list(character_avg.keys())
