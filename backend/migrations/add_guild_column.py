@@ -18,7 +18,11 @@ def add_guild_column():
     """
     try:
         # Conecta ao banco usando a mesma configuração do projeto
-        database_url = os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@tibia-tracker-postgres:5432/tibia_tracker')
+        postgres_user = os.getenv('POSTGRES_USER', 'postgres')
+        postgres_password = os.getenv('POSTGRES_PASSWORD', 'postgres')
+        postgres_host = os.getenv('POSTGRES_HOST', 'tibia-tracker-postgres')
+        postgres_db = os.getenv('POSTGRES_DB', 'tibia_tracker')
+        database_url = f'postgresql://{postgres_user}:{postgres_password}@{postgres_host}:5432/{postgres_db}'
         engine = create_engine(database_url)
         
         with engine.connect() as conn:
