@@ -42,33 +42,50 @@ async def get_world_exp_history(world: str, days: int = 30, db: Session = Depend
             if not characters:
                 return []
             
-            # Agrupa histórico por data
-            history_query = db.query(
-                func.date(CharacterHistory.timestamp).label('date'),
-                func.sum(CharacterHistory.experience).label('total_exp'),
-                func.count(func.distinct(CharacterHistory.character_id)).label('active_chars')
+            # Busca todas as datas únicas no período
+            dates_query = db.query(
+                func.date(CharacterHistory.timestamp).label('date')
             ).join(Character).filter(
                 Character.world == world_lower
             )
             
             if cutoff_date:
-                history_query = history_query.filter(CharacterHistory.timestamp >= cutoff_date)
+                dates_query = dates_query.filter(CharacterHistory.timestamp >= cutoff_date)
             
-            history_data = history_query.group_by(
-                func.date(CharacterHistory.timestamp)
-            ).order_by(
-                func.date(CharacterHistory.timestamp).asc()
-            ).all()
+            unique_dates = [row.date for row in dates_query.distinct().order_by(func.date(CharacterHistory.timestamp).asc()).all()]
             
-            # Converte para formato ServerStats
+            # Para cada data, calcula a experiência total (soma da experiência mais recente de cada personagem até aquela data)
             stats = []
-            for row in history_data:
+            for date in unique_dates:
+                # Busca a experiência mais recente de cada personagem até esta data
+                subquery = db.query(
+                    CharacterHistory.character_id,
+                    func.max(CharacterHistory.timestamp).label('max_timestamp')
+                ).join(Character).filter(
+                    Character.world == world_lower,
+                    func.date(CharacterHistory.timestamp) <= date
+                ).group_by(CharacterHistory.character_id).subquery()
+                
+                # Busca a experiência correspondente a cada timestamp máximo
+                exp_query = db.query(
+                    func.sum(CharacterHistory.experience).label('total_exp'),
+                    func.count(func.distinct(CharacterHistory.character_id)).label('active_chars')
+                ).join(
+                    subquery,
+                    (CharacterHistory.character_id == subquery.c.character_id) &
+                    (CharacterHistory.timestamp == subquery.c.max_timestamp)
+                )
+                
+                result = exp_query.first()
+                total_exp = float(result.total_exp) if result and result.total_exp else 0
+                active_chars = int(result.active_chars) if result and result.active_chars else 0
+                
                 stats.append(ServerStats(
                     id=0,
                     world=world_lower,
-                    total_experience=float(row.total_exp) if row.total_exp else 0,
-                    active_characters=int(row.active_chars) if row.active_chars else 0,
-                    timestamp=datetime.combine(row.date, datetime.min.time())
+                    total_experience=total_exp,
+                    active_characters=active_chars,
+                    timestamp=datetime.combine(date, datetime.min.time())
                 ))
         
         return stats
