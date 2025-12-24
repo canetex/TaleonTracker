@@ -21,10 +21,20 @@ export const getOutfitUrl = (outfit: string | undefined | null): string => {
   
   const cleanOutfit = outfit.trim();
   
+  // Se já começa com /api/static/outfits/, retorna diretamente (sem duplicar)
+  if (cleanOutfit.startsWith('/api/static/outfits/')) {
+    return cleanOutfit;
+  }
+  
+  // Se começa com api/static/outfits/ (sem barra inicial), adiciona apenas a barra
+  if (cleanOutfit.startsWith('api/static/outfits/')) {
+    return `/${cleanOutfit}`;
+  }
+  
   // Remove duplicações de /outfits/ se houver
   let normalized = cleanOutfit.replace(/\/+outfits\/+/g, '/outfits/');
   
-  // Se já começa com /static/outfits/, usa diretamente
+  // Se já começa com /static/outfits/, adiciona /api
   if (normalized.startsWith('/static/outfits/')) {
     return `/api${normalized}`;
   }
