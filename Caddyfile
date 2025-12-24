@@ -2,10 +2,39 @@
     auto_https off
 }
 
-# Redirecionamento de HTTPS para HTTP
+# Configuração para HTTPS - serve o mesmo conteúdo que HTTP
 :443 {
     tls internal
-    redir http://{host}{uri} permanent
+    encode gzip zstd
+
+    # Libera CORS para chamadas do frontend
+    header {
+        Access-Control-Allow-Origin *
+        Access-Control-Allow-Methods *
+        Access-Control-Allow-Headers *
+    }
+
+    @api path /api/*
+    handle @api {
+        reverse_proxy tibia-tracker-backend-1:8000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # Demais rotas vão para o frontend
+    handle {
+        reverse_proxy tibia-tracker-frontend-1:3000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    log
 }
 
 :80 {
@@ -20,7 +49,7 @@
 
     @api path /api/*
     handle @api {
-        reverse_proxy backend:8000 {
+        reverse_proxy tibia-tracker-backend-1:8000 {
             header_up Host {host}
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}
@@ -30,7 +59,7 @@
 
     # Demais rotas vão para o frontend
     handle {
-        reverse_proxy frontend:3000 {
+        reverse_proxy tibia-tracker-frontend-1:3000 {
             header_up Host {host}
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}
