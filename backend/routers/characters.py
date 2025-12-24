@@ -70,17 +70,20 @@ def enrich_character_response(character: Character, db: Session = None) -> Dict[
     daily_experience = 0
     real_history = [h for h in sorted_history if h.id > 0]  # Apenas registros reais
     
-    if len(real_history) >= 2:
+    if len(real_history) >= 1:
         # Busca o registro mais recente
         latest_real = real_history[0]
         latest_exp = latest_real.total_experience if latest_real.total_experience is not None else latest_real.experience
         
         # Busca o registro mais antigo dentro das últimas 24 horas
-        # Se não houver registro nas últimas 24h, usa o registro anterior mais próximo
+        # Procura do mais recente para o mais antigo
         previous_real = None
         for h in real_history[1:]:
+            # Se o registro está dentro das últimas 24h, usa ele
             if h.timestamp >= last_24h:
                 previous_real = h
+            else:
+                # Se passou das 24h, para a busca
                 break
         
         # Se não encontrou registro nas últimas 24h, usa o registro anterior mais próximo
@@ -92,11 +95,8 @@ def enrich_character_response(character: Character, db: Session = None) -> Dict[
             daily_experience = latest_exp - previous_exp
             # Permite valores negativos (perda por morte)
         else:
-            # Se não há registro anterior, usa o valor salvo do daily_experience
+            # Se não há registro anterior, usa o valor salvo do daily_experience do registro mais recente
             daily_experience = latest_real.daily_experience or 0
-    elif len(real_history) == 1:
-        # Se há apenas um registro real, usa o valor salvo
-        daily_experience = real_history[0].daily_experience or 0
     else:
         # Se não há registros reais, não há como calcular diária
         daily_experience = 0
