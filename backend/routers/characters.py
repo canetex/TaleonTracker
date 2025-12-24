@@ -209,12 +209,13 @@ async def get_character(character_id: int, days: int = 0, db: Session = Depends(
                     last_experience = h.get('experience', last_experience)
                     filled_history.append(h)
                 else:
-                    # Cria registro com valores do dia anterior (ou do último registro conhecido)
+                    # Cria registro com experiência 0 quando não houver dados
+                    # Level mantém do último registro conhecido, mas experiência é 0
                     filled_history.append({
                         'id': 0,
                         'character_id': character_id,
-                        'level': last_level,
-                        'experience': last_experience,
+                        'level': last_level,  # Mantém level do último registro
+                        'experience': 0,  # Experiência sempre 0 quando não houver dados
                         'daily_experience': 0,  # 0 de experiência no dia
                         'deaths': 0,
                         'timestamp': datetime.combine(current_date, datetime.min.time()).isoformat()
