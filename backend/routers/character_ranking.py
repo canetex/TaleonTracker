@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, case
 from typing import List, Dict, Any
 from datetime import datetime, timedelta
 from database import get_db
@@ -39,19 +39,27 @@ async def get_experience_ranking(
             world_filter = ['san', 'aura']
         
         if type == "accumulated":
-            # OVERALL: Experiência acumulada no período usando total_experience
-            # INITIAL_EXPERIENCE = FIRST REGISTER OF TOTAL_EXPERIENCE no intervalo
-            # LAST_EXPERIENCE = LAST REGISTER OF TOTAL_EXPERIENCE no intervalo
+            # OVERALL: Experiência acumulada no período usando total_experience (ou experience como fallback)
+            # INITIAL_EXPERIENCE = FIRST REGISTER OF TOTAL_EXPERIENCE (ou experience) no intervalo
+            # LAST_EXPERIENCE = LAST REGISTER OF TOTAL_EXPERIENCE (ou experience) no intervalo
             # OVERALL = (LAST_EXPERIENCE - INITIAL_EXPERIENCE)
             
-            # Busca personagens com histórico no período que tenham total_experience
+            # Usa CASE para usar total_experience quando disponível, senão usa experience
             history_query = db.query(
                 CharacterHistory.character_id,
-                func.min(CharacterHistory.total_experience).label('first_total_exp'),
-                func.max(CharacterHistory.total_experience).label('last_total_exp'),
+                func.min(
+                    case(
+                        (CharacterHistory.total_experience.isnot(None), CharacterHistory.total_experience),
+                        else_=CharacterHistory.experience
+                    )
+                ).label('first_total_exp'),
+                func.max(
+                    case(
+                        (CharacterHistory.total_experience.isnot(None), CharacterHistory.total_experience),
+                        else_=CharacterHistory.experience
+                    )
+                ).label('last_total_exp'),
                 func.max(CharacterHistory.timestamp).label('last_update')
-            ).filter(
-                CharacterHistory.total_experience.isnot(None)
             )
             
             if cutoff_date:
@@ -144,20 +152,28 @@ async def get_experience_ranking(
                     "last_update": data['last_update'].isoformat() if data['last_update'] else None
                 })
         else:
-            # AVERAGE: Experiência média no período usando total_experience
-            # INITIAL_EXPERIENCE = FIRST REGISTER OF TOTAL_EXPERIENCE no intervalo
-            # LAST_EXPERIENCE = LAST REGISTER OF TOTAL_EXPERIENCE no intervalo
+            # AVERAGE: Experiência média no período usando total_experience (ou experience como fallback)
+            # INITIAL_EXPERIENCE = FIRST REGISTER OF TOTAL_EXPERIENCE (ou experience) no intervalo
+            # LAST_EXPERIENCE = LAST REGISTER OF TOTAL_EXPERIENCE (ou experience) no intervalo
             # AVERAGE = (LAST_EXPERIENCE - INITIAL_EXPERIENCE) / DAYS
             
-            # Busca personagens com histórico no período que tenham total_experience
+            # Usa CASE para usar total_experience quando disponível, senão usa experience
             history_query = db.query(
                 CharacterHistory.character_id,
-                func.min(CharacterHistory.total_experience).label('first_total_exp'),
-                func.max(CharacterHistory.total_experience).label('last_total_exp'),
+                func.min(
+                    case(
+                        (CharacterHistory.total_experience.isnot(None), CharacterHistory.total_experience),
+                        else_=CharacterHistory.experience
+                    )
+                ).label('first_total_exp'),
+                func.max(
+                    case(
+                        (CharacterHistory.total_experience.isnot(None), CharacterHistory.total_experience),
+                        else_=CharacterHistory.experience
+                    )
+                ).label('last_total_exp'),
                 func.min(CharacterHistory.timestamp).label('first_date'),
                 func.max(CharacterHistory.timestamp).label('last_date')
-            ).filter(
-                CharacterHistory.total_experience.isnot(None)
             )
             
             if cutoff_date:
