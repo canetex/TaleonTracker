@@ -54,6 +54,12 @@ export const getOutfitUrl = (outfit: string | undefined | null): string => {
     return normalized;
   }
   
+  // Se começa com _ (como _taleon_Aura_xxx.png), assume que é nome de arquivo
+  // e adiciona o caminho completo
+  if (normalized.startsWith('_')) {
+    return `/api/static/outfits/${normalized}`;
+  }
+  
   // Caso contrário, assume que é apenas o nome do arquivo
   return `/api/static/outfits/${normalized}`;
 }; 
