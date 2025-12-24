@@ -138,40 +138,60 @@ const CharacterDetail: React.FC = () => {
 
   // Calcula média diária de experiência no intervalo
   // Fórmula: (LAST_TOTAL_EXPERIENCE - FIRST_TOTAL_EXPERIENCE) / DAYS
+  // IMPORTANTE: Só usa registros reais (id > 0) e que tenham total_experience válido
   let averageDailyExp = 0;
   
-  // Filtra apenas registros reais (id > 0) para o cálculo
-  const realHistory = history.filter((h: CharacterHistory) => h.id > 0);
+  // Filtra apenas registros reais (id > 0)
+  const allRealHistory = history.filter((h: CharacterHistory) => h.id > 0);
   
-  if (realHistory.length > 1) {
+  if (allRealHistory.length > 1) {
     // Ordena por data (mais antigo primeiro)
-    const sortedRealHistory = [...realHistory].sort((a, b) => 
+    const sortedRealHistory = [...allRealHistory].sort((a, b) => 
       new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
     
-    // Pega primeiro e último registro real
+    // Tenta usar total_experience se disponível em ambos os registros
     const firstRecord = sortedRealHistory[0];
     const lastRecord = sortedRealHistory[sortedRealHistory.length - 1];
     
-    // Usa total_experience quando disponível, senão usa experience
-    const firstTotalExp = firstRecord.total_experience !== null && firstRecord.total_experience !== undefined
-      ? firstRecord.total_experience
-      : (firstRecord.experience || 0);
+    const firstHasTotalExp = firstRecord.total_experience !== null && 
+                             firstRecord.total_experience !== undefined && 
+                             firstRecord.total_experience > 0;
+    const lastHasTotalExp = lastRecord.total_experience !== null && 
+                            lastRecord.total_experience !== undefined && 
+                            lastRecord.total_experience > 0;
     
-    const lastTotalExp = lastRecord.total_experience !== null && lastRecord.total_experience !== undefined
-      ? lastRecord.total_experience
-      : (lastRecord.experience || 0);
-    
-    // Calcula diferença de experiência
-    const totalExpGained = lastTotalExp - firstTotalExp;
-    
-    // Calcula diferença de dias
-    const firstDate = new Date(firstRecord.timestamp);
-    const lastDate = new Date(lastRecord.timestamp);
-    const daysDiff = Math.max(1, Math.ceil((lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24)));
-    
-    // Média diária = (LAST_TOTAL_EXPERIENCE - FIRST_TOTAL_EXPERIENCE) / DAYS
-    averageDailyExp = totalExpGained / daysDiff;
+    if (firstHasTotalExp && lastHasTotalExp) {
+      // Usa total_experience quando ambos têm
+      const firstTotalExp = firstRecord.total_experience!;
+      const lastTotalExp = lastRecord.total_experience!;
+      
+      // Calcula diferença de experiência
+      const totalExpGained = lastTotalExp - firstTotalExp;
+      
+      // Calcula diferença de dias
+      const firstDate = new Date(firstRecord.timestamp);
+      const lastDate = new Date(lastRecord.timestamp);
+      const daysDiff = Math.max(1, Math.ceil((lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24)));
+      
+      // Média diária = (LAST_TOTAL_EXPERIENCE - FIRST_TOTAL_EXPERIENCE) / DAYS
+      // Só calcula se a diferença for positiva e os valores forem razoáveis
+      if (totalExpGained >= 0 && daysDiff > 0) {
+        averageDailyExp = totalExpGained / daysDiff;
+      }
+    } else {
+      // Se não tem total_experience válido, usa a soma dos daily_experience
+      const firstDate = new Date(sortedRealHistory[0].timestamp);
+      const lastDate = new Date(sortedRealHistory[sortedRealHistory.length - 1].timestamp);
+      const daysDiff = Math.max(1, Math.ceil((lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24)));
+      
+      // Soma todos os daily_experience dos registros reais
+      const totalDailyExp = sortedRealHistory.reduce((sum, h) => sum + (h.daily_experience || 0), 0);
+      
+      if (daysDiff > 0) {
+        averageDailyExp = totalDailyExp / daysDiff;
+      }
+    }
   }
 
   return (
