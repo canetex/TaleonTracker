@@ -23,12 +23,23 @@ async def download_outfit(outfit_url: str, character_id: int, world: str) -> str
         if not outfit_url:
             return ""
         
-        # Se já é um caminho local, retorna como está (normaliza para /api/static/outfits/)
+        # Se já é um caminho local válido, verifica se o arquivo existe
         if outfit_url.startswith("/api/static/outfits/") or outfit_url.startswith("api/static/outfits/"):
-            return outfit_url
+            # Extrai o nome do arquivo
+            filename = outfit_url.split("/")[-1]
+            local_path_check = OUTFITS_DIR / filename
+            # Se o arquivo existe, retorna o caminho
+            if local_path_check.exists():
+                return outfit_url if outfit_url.startswith("/") else f"/{outfit_url}"
+            # Se não existe, continua para baixar novamente
+            logger.warning(f"Arquivo de outfit não encontrado: {filename}, baixando novamente...")
         # Se é um caminho antigo sem /api, normaliza
         if outfit_url.startswith("/static/outfits/") or outfit_url.startswith("static/outfits/"):
-            return f"/api{outfit_url}" if not outfit_url.startswith("/") else f"/api{outfit_url}"
+            filename = outfit_url.split("/")[-1]
+            local_path_check = OUTFITS_DIR / filename
+            if local_path_check.exists():
+                return f"/api{outfit_url}" if not outfit_url.startswith("/") else f"/api{outfit_url}"
+            logger.warning(f"Arquivo de outfit não encontrado: {filename}, baixando novamente...")
         
         # Extrai o nome do arquivo da URL
         parsed_url = urlparse(outfit_url)
