@@ -139,15 +139,72 @@ async def list_characters(db: Session = Depends(get_db)):
     return [enrich_character_response(char, db) for char in characters]
 
 @router.get("/{character_id}")
-async def get_character(character_id: int, db: Session = Depends(get_db)):
+async def get_character(character_id: int, days: int = 0, db: Session = Depends(get_db)):
     """
     Obtém um personagem específico com dados enriquecidos
+    days: filtra histórico pelos últimos N dias (0 = todos)
     Complexidade: O(m) onde m é o histórico do personagem
     """
+    from datetime import timedelta
+    
     character = db.query(Character).options(joinedload(Character.history)).filter(Character.id == character_id).first()
     if not character:
         raise HTTPException(status_code=404, detail="Personagem não encontrado")
-    return enrich_character_response(character, db)
+    
+    # Se days > 0, filtra o histórico antes de enriquecer
+    if days > 0:
+        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        # Filtra histórico no Python (mais simples que fazer na query)
+        character.history = [h for h in character.history if h.timestamp >= cutoff_date]
+    
+    response = enrich_character_response(character, db)
+    
+    # Preenche dias faltantes no histórico para garantir que vá até hoje
+    if days > 0 and response.get('history'):
+        history = response['history']
+        if history:
+            # Ordena por data
+            history.sort(key=lambda h: h['timestamp'])
+            
+            # Cria dicionário de datas existentes
+            history_dict = {}
+            for h in history:
+                date_key = datetime.fromisoformat(h['timestamp'].replace('Z', '+00:00')).date()
+                history_dict[date_key] = h
+            
+            # Preenche dias faltantes
+            start_date = datetime.utcnow().date() - timedelta(days=days)
+            today = datetime.utcnow().date()
+            current_date = start_date
+            filled_history = []
+            
+            last_level = history[0]['level'] if history else 0
+            last_experience = history[0]['experience'] if history else 0
+            
+            while current_date <= today:
+                if current_date in history_dict:
+                    # Usa o valor existente
+                    h = history_dict[current_date]
+                    last_level = h['level']
+                    last_experience = h['experience']
+                    filled_history.append(h)
+                else:
+                    # Cria registro com valores do dia anterior
+                    filled_history.append({
+                        'id': 0,
+                        'character_id': character_id,
+                        'level': last_level,
+                        'experience': last_experience,
+                        'daily_experience': 0,  # 0 de experiência no dia
+                        'deaths': 0,
+                        'timestamp': datetime.combine(current_date, datetime.min.time()).isoformat()
+                    })
+                
+                current_date += timedelta(days=1)
+            
+            response['history'] = filled_history
+    
+    return response
 
 @router.post("/{character_id}/update", response_model=CharacterResponse)
 async def update_character(character_id: int, db: Session = Depends(get_db)):
