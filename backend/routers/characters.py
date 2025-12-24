@@ -22,8 +22,10 @@ def enrich_character_response(character: Character, db: Session = None) -> Dict[
     """
     # Ordena o histórico por timestamp (mais recente primeiro)
     sorted_history = sorted(character.history, key=lambda h: h.timestamp, reverse=True) if character.history else []
-    latest_history = sorted_history[0] if sorted_history else None
-    previous_history = sorted_history[1] if len(sorted_history) > 1 else None
+    # Filtra apenas registros reais (id > 0) para pegar level e experience
+    real_history = [h for h in sorted_history if h.id > 0]
+    latest_history = real_history[0] if real_history else None
+    previous_history = real_history[1] if len(real_history) > 1 else None
     
     # Se não há histórico, tenta buscar do character_snapshots
     experience = 0
@@ -52,17 +54,21 @@ def enrich_character_response(character: Character, db: Session = None) -> Dict[
             logger.warning(f"Erro ao buscar snapshot para {character.name}: {str(e)}")
     
     # Calcula experiência diária se houver histórico anterior
+    # Ignora registros preenchidos (id = 0) para o cálculo
     daily_experience = 0
-    if latest_history and previous_history:
-        # Diferença entre a experiência mais recente e a anterior
-        daily_experience = latest_history.experience - previous_history.experience
+    real_history = [h for h in sorted_history if h.id > 0]  # Apenas registros reais
+    if len(real_history) >= 2:
+        # Diferença entre a experiência mais recente e a anterior (apenas registros reais)
+        latest_real = real_history[0]
+        previous_real = real_history[1]
+        daily_experience = latest_real.experience - previous_real.experience
         if daily_experience < 0:
             daily_experience = 0
-    elif latest_history:
-        # Se não há histórico anterior, usa o valor salvo
-        daily_experience = latest_history.daily_experience or 0
-    elif db and sorted_history:
-        # Se há apenas um registro, não há como calcular diária
+    elif len(real_history) == 1:
+        # Se há apenas um registro real, usa o valor salvo
+        daily_experience = real_history[0].daily_experience or 0
+    else:
+        # Se não há registros reais, não há como calcular diária
         daily_experience = 0
     
     response = {
@@ -166,9 +172,12 @@ async def get_character(character_id: int, days: int = 0, db: Session = Depends(
             # Ordena por data
             history.sort(key=lambda h: h['timestamp'])
             
-            # Cria dicionário de datas existentes
+            # Separa registros reais (id > 0) dos preenchidos (id = 0)
+            real_history = [h for h in history if h.get('id', 0) > 0]
+            
+            # Cria dicionário de datas existentes (apenas registros reais)
             history_dict = {}
-            for h in history:
+            for h in real_history:
                 # Converte timestamp para date
                 try:
                     if isinstance(h['timestamp'], str):
@@ -184,26 +193,33 @@ async def get_character(character_id: int, days: int = 0, db: Session = Depends(
             if days > 0:
                 start_date = datetime.utcnow().date() - timedelta(days=days)
             else:
-                # Se days=0, usa a primeira data do histórico como início
+                # Se days=0, usa a primeira data do histórico real como início
                 first_date = min(history_dict.keys()) if history_dict else datetime.utcnow().date()
                 start_date = first_date
             
+            # Encontra a última data com registro real
+            last_real_date = max(history_dict.keys()) if history_dict else None
             today = datetime.utcnow().date()
+            
+            # Só preenche até a última data real, não até hoje
+            # Isso evita criar registros com experiência 0 que afetam os cálculos
+            end_date = last_real_date if last_real_date else today
+            
             current_date = start_date
             filled_history = []
             
-            # Busca último histórico antes de start_date para usar como base
+            # Busca último histórico real para usar como base
             last_level = character.level or 0
             last_experience = 0
-            if history:
-                # Usa o primeiro registro como base inicial
-                first_h = history[0]
-                last_level = first_h.get('level', character.level or 0)
-                last_experience = first_h.get('experience', 0)
+            if real_history:
+                # Usa o último registro real como base
+                last_real = real_history[-1]
+                last_level = last_real.get('level', character.level or 0)
+                last_experience = last_real.get('experience', 0)
             
-            while current_date <= today:
+            while current_date <= end_date:
                 if current_date in history_dict:
-                    # Usa o valor existente
+                    # Usa o valor existente (registro real)
                     h = history_dict[current_date]
                     last_level = h.get('level', last_level)
                     last_experience = h.get('experience', last_experience)
