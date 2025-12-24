@@ -45,6 +45,7 @@ async def get_experience_ranking(
             # OVERALL = (LAST_EXPERIENCE - INITIAL_EXPERIENCE)
             
             # Usa CASE para usar total_experience quando disponível, senão usa experience
+            # Filtra apenas registros reais (id > 0)
             history_query = db.query(
                 CharacterHistory.character_id,
                 func.min(
@@ -60,7 +61,7 @@ async def get_experience_ranking(
                     )
                 ).label('last_total_exp'),
                 func.max(CharacterHistory.timestamp).label('last_update')
-            )
+            ).filter(CharacterHistory.id > 0)  # Apenas registros reais
             
             if cutoff_date:
                 history_query = history_query.filter(CharacterHistory.timestamp >= cutoff_date)
@@ -156,8 +157,10 @@ async def get_experience_ranking(
             # INITIAL_EXPERIENCE = FIRST REGISTER OF TOTAL_EXPERIENCE (ou experience) no intervalo
             # LAST_EXPERIENCE = LAST REGISTER OF TOTAL_EXPERIENCE (ou experience) no intervalo
             # AVERAGE = (LAST_EXPERIENCE - INITIAL_EXPERIENCE) / DAYS
+            # IMPORTANTE: DAYS = diferença real entre first_date e last_date, não o parâmetro days
             
             # Usa CASE para usar total_experience quando disponível, senão usa experience
+            # Filtra apenas registros reais (id > 0)
             history_query = db.query(
                 CharacterHistory.character_id,
                 func.min(
@@ -174,7 +177,7 @@ async def get_experience_ranking(
                 ).label('last_total_exp'),
                 func.min(CharacterHistory.timestamp).label('first_date'),
                 func.max(CharacterHistory.timestamp).label('last_date')
-            )
+            ).filter(CharacterHistory.id > 0)  # Apenas registros reais
             
             if cutoff_date:
                 history_query = history_query.filter(CharacterHistory.timestamp >= cutoff_date)
@@ -189,19 +192,28 @@ async def get_experience_ranking(
             history_results = history_query.all()
             
             # Calcula experiência média: (LAST_EXPERIENCE - INITIAL_EXPERIENCE) / DAYS
+            # DAYS = diferença real entre first_date e last_date
             character_avg = {}
-            interval_days = days if days > 0 else 1
             
             for row in history_results:
                 char_id = row.character_id
                 first_total_exp = float(row.first_total_exp) if row.first_total_exp else 0
                 last_total_exp = float(row.last_total_exp) if row.last_total_exp else 0
+                first_date = row.first_date
+                last_date = row.last_date
                 
                 # Calcula experiência total ganha no período
                 total_exp_gained = last_total_exp - first_total_exp
                 
-                # Calcula média: experiência total / intervalo de dias
-                avg_exp = total_exp_gained / interval_days if interval_days > 0 else 0
+                # Calcula diferença real de dias entre primeiro e último registro
+                if first_date and last_date:
+                    days_diff = (last_date - first_date).total_seconds() / (24 * 60 * 60)
+                    days_diff = max(1, math.ceil(days_diff))  # Mínimo 1 dia
+                else:
+                    days_diff = days if days > 0 else 1  # Fallback para o parâmetro days
+                
+                # Calcula média: experiência total / dias reais
+                avg_exp = total_exp_gained / days_diff if days_diff > 0 else 0
                 
                 # Só adiciona se a média for maior que 0
                 if avg_exp > 0:
