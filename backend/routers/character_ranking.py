@@ -159,53 +159,57 @@ async def get_experience_ranking(
             # AVERAGE = (LAST_EXPERIENCE - INITIAL_EXPERIENCE) / DAYS
             # IMPORTANTE: DAYS = diferença real entre first_date e last_date, não o parâmetro days
             
-            # Usa CASE para usar total_experience quando disponível, senão usa experience
-            # Filtra apenas registros reais (id > 0)
-            history_query = db.query(
-                CharacterHistory.character_id,
-                func.min(
-                    case(
-                        (CharacterHistory.total_experience.isnot(None), CharacterHistory.total_experience),
-                        else_=CharacterHistory.experience
-                    )
-                ).label('first_total_exp'),
-                func.max(
-                    case(
-                        (CharacterHistory.total_experience.isnot(None), CharacterHistory.total_experience),
-                        else_=CharacterHistory.experience
-                    )
-                ).label('last_total_exp'),
-                func.min(CharacterHistory.timestamp).label('first_date'),
-                func.max(CharacterHistory.timestamp).label('last_date')
-            ).filter(CharacterHistory.id > 0)  # Apenas registros reais
-            
-            if cutoff_date:
-                history_query = history_query.filter(CharacterHistory.timestamp >= cutoff_date)
-            
-            # Filtra por mundo através do Character
+            # Busca todos os personagens do mundo
+            characters_query = db.query(Character.id, Character.world)
             if isinstance(world_filter, list):
-                history_query = history_query.join(Character).filter(Character.world.in_(world_filter))
+                characters_query = characters_query.filter(Character.world.in_(world_filter))
             else:
-                history_query = history_query.join(Character).filter(Character.world == world_filter)
+                characters_query = characters_query.filter(Character.world == world_filter)
+            character_ids = [char.id for char in characters_query.all()]
             
-            history_query = history_query.group_by(CharacterHistory.character_id)
-            history_results = history_query.all()
+            if not character_ids:
+                return []
             
-            # Calcula experiência média: (LAST_EXPERIENCE - INITIAL_EXPERIENCE) / DAYS
-            # DAYS = diferença real entre first_date e last_date
+            # Para cada personagem, busca primeiro e último registro real no período
             character_avg = {}
             
-            for row in history_results:
-                char_id = row.character_id
-                first_total_exp = float(row.first_total_exp) if row.first_total_exp else 0
-                last_total_exp = float(row.last_total_exp) if row.last_total_exp else 0
-                first_date = row.first_date
-                last_date = row.last_date
+            for char_id in character_ids:
+                # Busca histórico do personagem no período (apenas registros reais)
+                history_filter = db.query(CharacterHistory).filter(
+                    CharacterHistory.character_id == char_id,
+                    CharacterHistory.id > 0  # Apenas registros reais
+                )
+                
+                if cutoff_date:
+                    history_filter = history_filter.filter(CharacterHistory.timestamp >= cutoff_date)
+                
+                # Ordena por timestamp
+                history_records = history_filter.order_by(CharacterHistory.timestamp.asc()).all()
+                
+                if len(history_records) < 2:
+                    # Precisa de pelo menos 2 registros para calcular média
+                    continue
+                
+                # Pega primeiro e último registro
+                first_record = history_records[0]
+                last_record = history_records[-1]
+                
+                # Usa total_experience quando disponível, senão usa experience
+                first_total_exp = first_record.total_experience if first_record.total_experience is not None else first_record.experience
+                last_total_exp = last_record.total_experience if last_record.total_experience is not None else last_record.experience
+                
+                if first_total_exp is None:
+                    first_total_exp = 0
+                if last_total_exp is None:
+                    last_total_exp = 0
                 
                 # Calcula experiência total ganha no período
-                total_exp_gained = last_total_exp - first_total_exp
+                total_exp_gained = float(last_total_exp) - float(first_total_exp)
                 
                 # Calcula diferença real de dias entre primeiro e último registro
+                first_date = first_record.timestamp
+                last_date = last_record.timestamp
+                
                 if first_date and last_date:
                     days_diff = (last_date - first_date).total_seconds() / (24 * 60 * 60)
                     days_diff = max(1, math.ceil(days_diff))  # Mínimo 1 dia
