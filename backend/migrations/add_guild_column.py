@@ -5,9 +5,9 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from sqlalchemy import text, create_engine
+from sqlalchemy import text
+from database import engine
 import logging
-import os
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -17,13 +17,6 @@ def add_guild_column():
     Adiciona a coluna 'guild' à tabela 'characters' se ela não existir
     """
     try:
-        # Conecta ao banco usando a mesma configuração do projeto
-        postgres_user = os.getenv('POSTGRES_USER', 'postgres')
-        postgres_password = os.getenv('POSTGRES_PASSWORD', 'postgres')
-        postgres_host = os.getenv('POSTGRES_HOST', 'tibia-tracker-postgres')
-        postgres_db = os.getenv('POSTGRES_DB', 'tibia_tracker')
-        database_url = f'postgresql://{postgres_user}:{postgres_password}@{postgres_host}:5432/{postgres_db}'
-        engine = create_engine(database_url)
         
         with engine.connect() as conn:
             # Verifica se a coluna já existe
