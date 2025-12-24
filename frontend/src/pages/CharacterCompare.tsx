@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -171,7 +171,12 @@ const CharacterCompare: React.FC = () => {
                       <TableCell>Atributo</TableCell>
                       {selectedCharacters.map((char) => (
                         <TableCell key={char.id} align="right">
-                          {char.name}
+                          <Link 
+                            to={`/characters/${char.id}`}
+                            style={{ color: 'inherit', textDecoration: 'none', fontWeight: 'bold' }}
+                          >
+                            {char.name}
+                          </Link>
                         </TableCell>
                       ))}
                     </TableRow>

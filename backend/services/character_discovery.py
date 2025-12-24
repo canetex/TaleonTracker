@@ -11,6 +11,8 @@ import logging
 import re
 from typing import List, Set
 import asyncio
+from services.death_scraper import scrape_deaths, save_deaths
+from services.scraper import update_all_characters
 
 logger = logging.getLogger(__name__)
 
@@ -295,6 +297,26 @@ async def discover_and_add_characters(db: Session = None) -> dict:
         }
         
         logger.info(f"Descoberta concluída: {stats}")
+        
+        # Faz scraping de mortes e salva no banco
+        logger.info("Iniciando scraping de mortes...")
+        try:
+            for world in ["san", "aura"]:
+                deaths = await scrape_deaths(world, db)
+                if deaths:
+                    saved_deaths = await save_deaths(deaths, db)
+                    logger.info(f"{saved_deaths} mortes salvas para o mundo {world}")
+        except Exception as e:
+            logger.error(f"Erro ao processar mortes: {str(e)}")
+        
+        # Chama update_all_characters ao final do processamento
+        logger.info("Iniciando atualização de todos os personagens...")
+        try:
+            await update_all_characters()
+            logger.info("Atualização de personagens concluída")
+        except Exception as e:
+            logger.error(f"Erro ao atualizar personagens: {str(e)}")
+        
         return stats
         
     except Exception as e:

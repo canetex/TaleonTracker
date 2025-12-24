@@ -40,7 +40,7 @@ async def startup():
         from services.scheduler import schedule_daily_scrape, schedule_character_discovery
         
         scheduler = BackgroundScheduler()
-        schedule_daily_scrape(scheduler)
+        # schedule_daily_scrape removido - update_all_characters agora é chamado automaticamente após discover_and_add_characters
         schedule_character_discovery(scheduler)
         scheduler.start()
         logger.info("Scheduler inicializado com sucesso")

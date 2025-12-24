@@ -14,6 +14,10 @@ from fastapi_cache import FastAPICache
 from fastapi_cache.decorator import cache
 import asyncio
 from services.outfit_downloader import download_outfit
+from services.experience_lookup import (
+    get_experience_from_highscores,
+    get_experience_from_level_table
+)
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -151,30 +155,33 @@ async def scrape_character_data(character_name: str, db: Session, world: str = N
             logger.warning(f"Tabela encontrada é uma tabela de busca, não um perfil de personagem: {character_name}")
             character_not_found = True
         
-        # Se personagem não foi encontrado, cria registro com 0 de experiência e level do dia anterior
+        # Se personagem não foi encontrado, cria registro mantendo level e total_experience do último histórico
         if character_not_found:
             character = db.query(Character).filter(Character.name == character_name).first()
             if character:
-                # Busca último histórico para pegar level e experiência
+                # Busca último histórico para pegar level e total_experience
                 last_history = db.query(CharacterHistory).filter(
                     CharacterHistory.character_id == character.id
                 ).order_by(CharacterHistory.timestamp.desc()).first()
                 
                 level = character.level or (last_history.level if last_history else 0)
-                experience = last_history.experience if last_history else 0
+                # Mantém total_experience do último histórico (ou 0 se não houver)
+                total_experience = last_history.total_experience if last_history and last_history.total_experience else 0
+                experience = total_experience  # experience é usado como total_experience
                 
-                # Cria registro com 0 de experiência diária
+                # Cria registro com 0 de experiência diária (não conseguiu identificar)
                 history = CharacterHistory(
                     character_id=character.id,
                     level=level,
                     experience=experience,
-                    daily_experience=0,
+                    total_experience=total_experience,
+                    daily_experience=0,  # Sempre 0 quando não encontrado
                     deaths=0,
                     timestamp=datetime.utcnow()
                 )
                 db.add(history)
                 db.commit()
-                logger.info(f"Registro criado para {character_name} (não encontrado): level={level}, exp={experience}, daily=0")
+                logger.info(f"Registro criado para {character_name} (não encontrado): level={level}, total_exp={total_experience}, daily=0")
                 return True
             else:
                 logger.error(f"Character {character_name} not found in database")
@@ -215,7 +222,10 @@ async def scrape_character_data(character_name: str, db: Session, world: str = N
         logger.info(f"Dados encontrados para {character_name}: {character_data}")
         
         # Procura pela tabela "Experience History" para extrair experiência diária
-        daily_experience = 0
+        # daily_experience pode ser positivo (ganhou) ou negativo (perdeu por morte)
+        daily_experience = None  # None indica que não conseguiu identificar
+        daily_experience_identified = False
+        
         # Procura por todas as tabelas e verifica se alguma tem "Experience History" como cabeçalho
         all_tables = soup.find_all('table')
         for table in all_tables:
@@ -232,18 +242,21 @@ async def scrape_character_data(character_name: str, db: Session, world: str = N
                             exp_col = cols[1].text.strip()
                             # Procura pela linha "Today"
                             if date_col.lower() == 'today':
-                                # Remove pontos e vírgulas, mantém apenas números
-                                exp_text = re.sub(r'[^\d]', '', exp_col)
-                                daily_experience = float(exp_text) if exp_text else 0
-                                logger.info(f"Experiência diária (Today) extraída: {daily_experience} de '{exp_col}'")
+                                # Remove pontos e vírgulas, mantém apenas números e sinal negativo
+                                # Permite valores negativos (perda de experiência)
+                                exp_text = re.sub(r'[^\d\-]', '', exp_col)
+                                if exp_text:
+                                    daily_experience = float(exp_text)
+                                    daily_experience_identified = True
+                                    logger.info(f"Experiência diária (Today) extraída: {daily_experience} de '{exp_col}'")
                                 break
-                    if daily_experience > 0:
+                    if daily_experience_identified:
                         break
-            if daily_experience > 0:
+            if daily_experience_identified:
                 break
         
         # Se não encontrou, tenta procurar diretamente por "Today" em qualquer tabela
-        if daily_experience == 0:
+        if not daily_experience_identified:
             for table in all_tables:
                 rows = table.find_all('tr')
                 for row in rows:
@@ -252,12 +265,20 @@ async def scrape_character_data(character_name: str, db: Session, world: str = N
                         date_col = cols[0].text.strip().lower()
                         if 'today' in date_col:
                             exp_col = cols[1].text.strip()
-                            exp_text = re.sub(r'[^\d]', '', exp_col)
-                            daily_experience = float(exp_text) if exp_text else 0
-                            logger.info(f"Experiência diária (Today) extraída (método alternativo): {daily_experience} de '{exp_col}'")
+                            # Permite valores negativos
+                            exp_text = re.sub(r'[^\d\-]', '', exp_col)
+                            if exp_text:
+                                daily_experience = float(exp_text)
+                                daily_experience_identified = True
+                                logger.info(f"Experiência diária (Today) extraída (método alternativo): {daily_experience} de '{exp_col}'")
                             break
-                if daily_experience > 0:
+                if daily_experience_identified:
                     break
+        
+        # Se não conseguiu identificar, define como 0
+        if not daily_experience_identified:
+            daily_experience = 0
+            logger.info(f"Não foi possível identificar experiência diária para {character_name}, definindo como 0")
         
         # Atualiza o personagem no banco de dados
         character = db.query(Character).filter(Character.name == character_name).first()
@@ -309,6 +330,34 @@ async def scrape_character_data(character_name: str, db: Session, world: str = N
                     deaths = int(deaths_text) if deaths_text else 0
                     logger.info(f"Mortes extraídas de '{deaths_text}' para {deaths}")
                 
+                # Busca último histórico para calcular total_experience
+                last_history = db.query(CharacterHistory).filter(
+                    CharacterHistory.character_id == character.id
+                ).order_by(CharacterHistory.timestamp.desc()).first()
+                
+                # Calcula total_experience
+                total_experience = None
+                if last_history and last_history.total_experience is not None:
+                    # Se já tem total_experience, atualiza com daily_experience
+                    total_experience = last_history.total_experience + daily_experience
+                    logger.info(f"Total experiência atualizado: {last_history.total_experience} + {daily_experience} = {total_experience}")
+                else:
+                    # Se não tem, tenta buscar via highscores ou tabela de level
+                    logger.info(f"Buscando total_experience inicial para {character_name}...")
+                    total_experience = await get_experience_from_highscores(character_name, world_detected)
+                    if total_experience is None:
+                        # Se não encontrou no highscores, usa tabela de experiência baseada no level
+                        total_experience = get_experience_from_level_table(level)
+                        logger.info(f"Total experiência obtido da tabela de level: {total_experience}")
+                    else:
+                        logger.info(f"Total experiência obtido do highscores: {total_experience}")
+                
+                # Valida total_experience contra level
+                min_exp_for_level = get_experience_from_level_table(level)
+                if total_experience < min_exp_for_level:
+                    logger.warning(f"Total experiência ({total_experience}) menor que mínimo para level {level} ({min_exp_for_level}). Corrigindo...")
+                    total_experience = min_exp_for_level
+                
                 # Verifica se já existe registro para hoje (evita duplicatas)
                 today = datetime.utcnow().date()
                 existing_today = db.query(CharacterHistory).filter(
@@ -319,33 +368,25 @@ async def scrape_character_data(character_name: str, db: Session, world: str = N
                 if existing_today:
                     # Atualiza registro existente
                     existing_today.level = level
-                    existing_today.experience = experience
+                    existing_today.experience = total_experience  # experience agora é total_experience
+                    existing_today.total_experience = total_experience
                     existing_today.daily_experience = daily_experience
                     existing_today.deaths = deaths
                     logger.info(f"Registro de hoje atualizado para {character_name}")
                 else:
-                    # Busca último histórico para comparar
-                    last_history = db.query(CharacterHistory).filter(
-                        CharacterHistory.character_id == character.id
-                    ).order_by(CharacterHistory.timestamp.desc()).first()
-                    
-                    # Se não há mudança na experiência, cria registro com 0 de daily_experience
-                    if last_history and last_history.experience == experience:
-                        daily_experience = 0
-                        logger.info(f"Sem mudança de experiência para {character_name}, daily_experience=0")
-                    
                     # Cria um novo registro de histórico
                     try:
                         history = CharacterHistory(
                             character_id=character.id,
-                            level=level,  # Usando o mesmo nível já processado
-                            experience=experience,
-                            daily_experience=daily_experience,
+                            level=level,
+                            experience=total_experience,  # experience agora é total_experience
+                            total_experience=total_experience,
+                            daily_experience=daily_experience,  # Pode ser negativo
                             deaths=deaths,
                             timestamp=datetime.utcnow()
                         )
                         db.add(history)
-                        logger.info(f"Registro de histórico criado para {character_name}")
+                        logger.info(f"Registro de histórico criado para {character_name}: level={level}, total_exp={total_experience}, daily={daily_experience}")
                     except Exception as e:
                         logger.error(f"Erro ao criar registro de histórico: {str(e)}")
                         raise

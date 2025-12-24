@@ -163,14 +163,25 @@ const CharacterDetail: React.FC = () => {
                 )}
                 <Typography variant="h4">{character.name}</Typography>
               </Box>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleUpdate}
-                disabled={updating}
-              >
-                {updating ? 'Atualizando...' : 'Atualizar Dados'}
-              </Button>
+              <Box display="flex" gap={2}>
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  href={`https://${character.world || 'san'}.taleon.online/characterprofile.php?name=${encodeURIComponent(character.name)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Ver no Taleon
+                </Button>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleUpdate}
+                  disabled={updating}
+                >
+                  {updating ? 'Atualizando...' : 'Atualizar Dados'}
+                </Button>
+              </Box>
             </Box>
             <Grid container spacing={2}>
               <Grid item xs={12} md={4}>

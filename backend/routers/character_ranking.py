@@ -39,12 +39,19 @@ async def get_experience_ranking(
             world_filter = ['san', 'aura']
         
         if type == "accumulated":
-            # Experiência acumulada: diferença entre experiência ANTES do período e última experiência no período
-            # Primeiro, busca os personagens com histórico no período
+            # OVERALL: Experiência acumulada no período usando total_experience
+            # INITIAL_EXPERIENCE = FIRST REGISTER OF TOTAL_EXPERIENCE no intervalo
+            # LAST_EXPERIENCE = LAST REGISTER OF TOTAL_EXPERIENCE no intervalo
+            # OVERALL = (LAST_EXPERIENCE - INITIAL_EXPERIENCE)
+            
+            # Busca personagens com histórico no período que tenham total_experience
             history_query = db.query(
                 CharacterHistory.character_id,
-                func.max(CharacterHistory.experience).label('max_exp'),
+                func.min(CharacterHistory.total_experience).label('first_total_exp'),
+                func.max(CharacterHistory.total_experience).label('last_total_exp'),
                 func.max(CharacterHistory.timestamp).label('last_update')
+            ).filter(
+                CharacterHistory.total_experience.isnot(None)
             )
             
             if cutoff_date:
@@ -60,50 +67,22 @@ async def get_experience_ranking(
             
             history_results = history_query.all()
             
-            # Para cada personagem, busca a experiência ANTES do período (se houver)
-            char_ids = [row.character_id for row in history_results]
-            if not char_ids:
-                return []
-            
-            # Busca experiência antes do período para cada personagem
-            initial_exp_query = db.query(
-                CharacterHistory.character_id,
-                func.max(CharacterHistory.timestamp).label('max_timestamp')
-            ).filter(
-                CharacterHistory.character_id.in_(char_ids)
-            )
-            
-            if cutoff_date:
-                initial_exp_query = initial_exp_query.filter(CharacterHistory.timestamp < cutoff_date)
-            
-            initial_exp_query = initial_exp_query.group_by(CharacterHistory.character_id).subquery()
-            
-            initial_exp_data = db.query(
-                CharacterHistory.character_id,
-                CharacterHistory.experience
-            ).join(
-                initial_exp_query,
-                (CharacterHistory.character_id == initial_exp_query.c.character_id) &
-                (CharacterHistory.timestamp == initial_exp_query.c.max_timestamp)
-            ).all()
-            
-            initial_exp_dict = {row.character_id: float(row.experience) for row in initial_exp_data}
-            
-            # Calcula experiência acumulada e ordena
+            # Calcula experiência acumulada (OVERALL)
             character_data = {}
             for row in history_results:
                 char_id = row.character_id
-                max_exp = float(row.max_exp) if row.max_exp else 0
-                # Se não há experiência inicial (antes do período), usa 0 como base
-                initial_exp = initial_exp_dict.get(char_id, 0)
-                accumulated = max_exp - initial_exp
+                first_total_exp = float(row.first_total_exp) if row.first_total_exp else 0
+                last_total_exp = float(row.last_total_exp) if row.last_total_exp else 0
+                
+                # OVERALL = (LAST_EXPERIENCE - INITIAL_EXPERIENCE)
+                accumulated = last_total_exp - first_total_exp
+                
                 # Só adiciona se a experiência acumulada for maior que 0
                 if accumulated > 0:
-                    if char_id not in character_data or accumulated > character_data[char_id]['accumulated']:
-                        character_data[char_id] = {
-                            'accumulated': accumulated,
-                            'last_update': row.last_update
-                        }
+                    character_data[char_id] = {
+                        'accumulated': accumulated,
+                        'last_update': row.last_update
+                    }
             
             # Busca informações dos personagens e level mais recente
             char_ids = list(character_data.keys())
@@ -165,14 +144,20 @@ async def get_experience_ranking(
                     "last_update": data['last_update'].isoformat() if data['last_update'] else None
                 })
         else:
-            # Experiência média: SOMA(EXP_POR_DIA) / INTERVALO_DIAS
-            # Calcula a diferença total de experiência no período e divide pelo intervalo
+            # AVERAGE: Experiência média no período usando total_experience
+            # INITIAL_EXPERIENCE = FIRST REGISTER OF TOTAL_EXPERIENCE no intervalo
+            # LAST_EXPERIENCE = LAST REGISTER OF TOTAL_EXPERIENCE no intervalo
+            # AVERAGE = (LAST_EXPERIENCE - INITIAL_EXPERIENCE) / DAYS
+            
+            # Busca personagens com histórico no período que tenham total_experience
             history_query = db.query(
                 CharacterHistory.character_id,
-                func.min(CharacterHistory.experience).label('first_exp'),
-                func.max(CharacterHistory.experience).label('last_exp'),
+                func.min(CharacterHistory.total_experience).label('first_total_exp'),
+                func.max(CharacterHistory.total_experience).label('last_total_exp'),
                 func.min(CharacterHistory.timestamp).label('first_date'),
                 func.max(CharacterHistory.timestamp).label('last_date')
+            ).filter(
+                CharacterHistory.total_experience.isnot(None)
             )
             
             if cutoff_date:
@@ -187,22 +172,21 @@ async def get_experience_ranking(
             history_query = history_query.group_by(CharacterHistory.character_id)
             history_results = history_query.all()
             
-            # Calcula experiência média: (ÚLTIMA_EXP - PRIMEIRA_EXP) / INTERVALO_DIAS
+            # Calcula experiência média: (LAST_EXPERIENCE - INITIAL_EXPERIENCE) / DAYS
             character_avg = {}
             interval_days = days if days > 0 else 1
             
             for row in history_results:
                 char_id = row.character_id
-                first_exp = float(row.first_exp) if row.first_exp else 0
-                last_exp = float(row.last_exp) if row.last_exp else 0
+                first_total_exp = float(row.first_total_exp) if row.first_total_exp else 0
+                last_total_exp = float(row.last_total_exp) if row.last_total_exp else 0
                 
                 # Calcula experiência total ganha no período
-                total_exp_gained = last_exp - first_exp
-                if total_exp_gained < 0:
-                    total_exp_gained = 0  # Se a experiência diminuiu (morte), considera 0
+                total_exp_gained = last_total_exp - first_total_exp
                 
                 # Calcula média: experiência total / intervalo de dias
-                avg_exp = total_exp_gained / interval_days
+                avg_exp = total_exp_gained / interval_days if interval_days > 0 else 0
+                
                 # Só adiciona se a média for maior que 0
                 if avg_exp > 0:
                     character_avg[char_id] = avg_exp

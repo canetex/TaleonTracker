@@ -17,4 +17,4 @@ class Character(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    history = relationship("CharacterHistory", back_populates="character", cascade="all, delete-orphan")
+    history = relationship("CharacterHistory", back_populates="character", cascade="save-update")

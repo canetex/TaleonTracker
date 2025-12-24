@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -395,7 +396,14 @@ const WorldStats: React.FC = () => {
                         {ranking.map((char) => (
                           <TableRow key={char.character_id}>
                             <TableCell>{char.rank}</TableCell>
-                            <TableCell>{char.name}</TableCell>
+                            <TableCell>
+                              <Link 
+                                to={`/characters/${char.character_id}`}
+                                style={{ color: 'inherit', textDecoration: 'none' }}
+                              >
+                                {char.name}
+                              </Link>
+                            </TableCell>
                             <TableCell>{(char as any).level || 'N/A'}</TableCell>
                             <TableCell>{(char.world || '').charAt(0).toUpperCase() + (char.world || '').slice(1)}</TableCell>
                             <TableCell>{char.vocation}</TableCell>
