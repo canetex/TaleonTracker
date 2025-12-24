@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, case
 from typing import List
 from datetime import datetime, timedelta
 from database import get_db
@@ -60,23 +60,32 @@ async def get_world_exp_history(world: str, days: int = 30, db: Session = Depend
             stats = []
             for date in unique_dates:
                 # Busca a experiência mais recente de cada personagem até esta data
+                # Filtra apenas registros reais (id > 0)
                 subquery = db.query(
                     CharacterHistory.character_id,
                     func.max(CharacterHistory.timestamp).label('max_timestamp')
                 ).join(Character).filter(
                     Character.world == world_lower,
-                    func.date(CharacterHistory.timestamp) <= date
+                    func.date(CharacterHistory.timestamp) <= date,
+                    CharacterHistory.id > 0  # Apenas registros reais
                 ).group_by(CharacterHistory.character_id).subquery()
                 
                 # Busca a experiência correspondente a cada timestamp máximo
+                # Usa total_experience quando disponível, senão usa experience
+                # Filtra apenas registros reais (id > 0)
                 exp_query = db.query(
-                    func.sum(CharacterHistory.experience).label('total_exp'),
+                    func.sum(
+                        case(
+                            (CharacterHistory.total_experience.isnot(None), CharacterHistory.total_experience),
+                            else_=CharacterHistory.experience
+                        )
+                    ).label('total_exp'),
                     func.count(func.distinct(CharacterHistory.character_id)).label('active_chars')
                 ).join(
                     subquery,
                     (CharacterHistory.character_id == subquery.c.character_id) &
                     (CharacterHistory.timestamp == subquery.c.max_timestamp)
-                )
+                ).filter(CharacterHistory.id > 0)  # Apenas registros reais
                 
                 result = exp_query.first()
                 total_exp = float(result.total_exp) if result and result.total_exp else 0
@@ -172,23 +181,32 @@ async def get_world_active_history(world: str, days: int = 30, db: Session = Dep
             stats = []
             for date in unique_dates:
                 # Busca personagens que tiveram atualização até esta data
+                # Filtra apenas registros reais (id > 0)
                 subquery = db.query(
                     CharacterHistory.character_id,
                     func.max(CharacterHistory.timestamp).label('max_timestamp')
                 ).join(Character).filter(
                     Character.world == world_lower,
-                    func.date(CharacterHistory.timestamp) <= date
+                    func.date(CharacterHistory.timestamp) <= date,
+                    CharacterHistory.id > 0  # Apenas registros reais
                 ).group_by(CharacterHistory.character_id).subquery()
                 
                 # Conta personagens únicos ativos
+                # Usa total_experience quando disponível, senão usa experience
+                # Filtra apenas registros reais (id > 0)
                 active_query = db.query(
                     func.count(func.distinct(CharacterHistory.character_id)).label('active_chars'),
-                    func.sum(CharacterHistory.experience).label('total_exp')
+                    func.sum(
+                        case(
+                            (CharacterHistory.total_experience.isnot(None), CharacterHistory.total_experience),
+                            else_=CharacterHistory.experience
+                        )
+                    ).label('total_exp')
                 ).join(
                     subquery,
                     (CharacterHistory.character_id == subquery.c.character_id) &
                     (CharacterHistory.timestamp == subquery.c.max_timestamp)
-                )
+                ).filter(CharacterHistory.id > 0)  # Apenas registros reais
                 
                 result = active_query.first()
                 active_chars = int(result.active_chars) if result and result.active_chars else 0
@@ -256,13 +274,16 @@ async def calculate_world_stats(world: str, db: Session = Depends(get_db)):
         
         # O(n) - itera sobre personagens
         for character in characters:
-            # Busca histórico mais recente
+            # Busca histórico mais recente (apenas registros reais)
             latest_history = db.query(CharacterHistory).filter(
-                CharacterHistory.character_id == character.id
+                CharacterHistory.character_id == character.id,
+                CharacterHistory.id > 0  # Apenas registros reais
             ).order_by(CharacterHistory.timestamp.desc()).first()
             
             if latest_history:
-                total_experience += latest_history.experience
+                # Usa total_experience quando disponível, senão usa experience
+                exp_value = latest_history.total_experience if latest_history.total_experience is not None else latest_history.experience
+                total_experience += exp_value if exp_value else 0
                 # Considera ativo se teve atualização nos últimos 7 dias
                 days_since_update = (datetime.utcnow() - latest_history.timestamp).days
                 if days_since_update <= 7:
