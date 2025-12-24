@@ -254,8 +254,8 @@ const CharacterDetail: React.FC = () => {
                       yAxisID: 'y',
                     },
                     {
-                      label: 'Experiência',
-                      data: history.map((h: CharacterHistory) => getExperienceFromHistory(h)),
+                      label: 'Experiência Diária',
+                      data: history.map((h: CharacterHistory) => h.daily_experience || 0),
                       borderColor: 'rgb(255, 99, 132)',
                       backgroundColor: 'rgba(255, 99, 132, 0.2)',
                       tension: 0.1,
@@ -263,11 +263,7 @@ const CharacterDetail: React.FC = () => {
                     },
                     ...(averageDailyExp > 0 ? [{
                       label: 'Média Diária de EXP',
-                      data: history.map((_, index) => {
-                        // Linha que mostra o crescimento esperado baseado na média diária
-                        const firstExp = getExperienceFromHistory(history[0]);
-                        return firstExp + averageDailyExp * index;
-                      }),
+                      data: history.map(() => averageDailyExp),
                       borderColor: 'rgba(255, 206, 86, 0.8)',
                       backgroundColor: 'rgba(255, 206, 86, 0.1)',
                       borderDash: [5, 5],
@@ -306,7 +302,7 @@ const CharacterDetail: React.FC = () => {
                       position: 'right' as const,
                       title: {
                         display: true,
-                        text: 'Experiência',
+                        text: 'Experiência Diária',
                       },
                       grid: {
                         drawOnChartArea: false,
