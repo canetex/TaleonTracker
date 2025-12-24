@@ -288,16 +288,119 @@ Para cada data no período:
 
 #### Tipo: Acumulada
 
-```
-Experiência Acumulada = MAX(exp no período) - MAX(exp antes do período)
+**Objetivo:** Calcular a experiência total **ganha** por um personagem dentro de um período específico, considerando apenas o ganho líquido dentro daquele intervalo.
 
-Para cada personagem:
-  1. Busca MAX(experience) no período
-  2. Busca MAX(experience) ANTES do período
-  3. Calcula diferença
-  4. Filtra apenas valores > 0
-  5. Ordena decrescente
+**Fórmula:**
 ```
+Experiência Acumulada = MAX(exp no período) - MAX(exp ANTES do período)
+```
+
+**Por que usar MAX(exp antes) como baseline?**
+
+A experiência de um personagem é sempre crescente (nunca diminui). Para calcular o ganho dentro de um período, precisamos saber:
+- **Onde o personagem estava ANTES** do período (baseline)
+- **Onde o personagem está AGORA** (dentro do período)
+
+Usar `MAX(exp antes)` garante que pegamos o último valor conhecido antes do período começar, mesmo que o personagem tenha múltiplos registros históricos antes da data de corte.
+
+**Processamento Detalhado:**
+
+```
+Para cada personagem no banco:
+
+1. DEFINE O PERÍODO
+   ├─ cutoff_date = hoje - days (ex: 30 dias atrás)
+   └─ Período = [cutoff_date, hoje]
+
+2. BUSCA EXPERIÊNCIA MÁXIMA NO PERÍODO
+   ├─ Query: MAX(experience) WHERE timestamp >= cutoff_date
+   ├─ Agrupa por character_id
+   └─ Resultado: max_exp_periodo = maior experiência registrada no período
+
+3. BUSCA EXPERIÊNCIA ANTES DO PERÍODO (BASELINE)
+   ├─ Query: MAX(timestamp) WHERE timestamp < cutoff_date
+   ├─ Para o timestamp máximo encontrado, busca a experience correspondente
+   └─ Resultado: initial_exp = experiência no último registro antes do período
+   
+   ⚠️ CASO ESPECIAL: Se não há registros antes do período:
+      └─ initial_exp = 0 (assume que começou do zero no período)
+
+4. CALCULA EXPERIÊNCIA ACUMULADA
+   └─ accumulated = max_exp_periodo - initial_exp
+
+5. FILTRA E ORDENA
+   ├─ Remove personagens com accumulated <= 0
+   ├─ Ordena por accumulated (decrescente)
+   └─ Aplica limit (top 100)
+```
+
+**Exemplo Prático:**
+
+```
+Personagem: "The Crusty"
+Período: Últimos 30 dias (de 24/11 a 24/12)
+
+Histórico no banco:
+├─ 20/11: 400.000.000 EXP (antes do período)
+├─ 25/11: 405.000.000 EXP (dentro do período)
+├─ 10/12: 450.000.000 EXP (dentro do período)
+└─ 23/12: 505.112.145 EXP (dentro do período) ← MAX no período
+
+Cálculo:
+├─ max_exp_periodo = 505.112.145 (maior valor no período)
+├─ initial_exp = 400.000.000 (último valor antes do período)
+└─ accumulated = 505.112.145 - 400.000.000 = 105.112.145 EXP
+
+Resultado: "The Crusty" ganhou 105.112.145 de experiência nos últimos 30 dias.
+```
+
+**Casos Especiais:**
+
+1. **Personagem novo (sem histórico antes do período):**
+   ```
+   initial_exp = 0
+   accumulated = max_exp_periodo - 0 = max_exp_periodo
+   ```
+   ✅ Considera toda a experiência do período como ganho
+
+2. **Personagem inativo (sem registros no período):**
+   ```
+   max_exp_periodo = NULL ou não encontrado
+   accumulated = não calculado (personagem não aparece no ranking)
+   ```
+   ✅ Não aparece no ranking (filtrado)
+
+3. **Personagem com experiência decrescente (erro de dados):**
+   ```
+   Se max_exp_periodo < initial_exp:
+     accumulated < 0
+     Personagem é filtrado (não aparece no ranking)
+   ```
+   ✅ Proteção contra dados inconsistentes
+
+**Diferença entre "Acumulada" e "Média Diária":**
+
+| Tipo | Fórmula | Interpretação |
+|------|---------|---------------|
+| **Acumulada** | `MAX(período) - MAX(antes)` | Total ganho no período inteiro |
+| **Média Diária** | `(MAX(período) - MIN(período)) / dias` | Média de ganho por dia no período |
+
+**Exemplo Comparativo:**
+
+```
+Personagem ganhou 100.000.000 EXP em 30 dias:
+
+Acumulada: 100.000.000 EXP (total no período)
+Média Diária: 100.000.000 / 30 = 3.333.333 EXP/dia
+```
+
+**Complexidade Algorítmica:**
+
+- **O(n × m)**: Onde `n` = número de personagens e `m` = histórico médio por personagem
+- **Otimizações:**
+  - Uso de `GROUP BY` e `MAX()` em SQL (eficiente)
+  - Subqueries para buscar baseline (evita múltiplas queries)
+  - Filtro por mundo via JOIN (índice otimizado)
 
 #### Tipo: Média Diária
 
