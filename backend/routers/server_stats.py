@@ -44,11 +44,12 @@ async def get_world_exp_history(world: str, days: int = 30, db: Session = Depend
             if not characters:
                 return []
             
-            # Busca todas as datas únicas no período
+            # Busca todas as datas únicas no período (apenas registros reais)
             dates_query = db.query(
                 func.date(CharacterHistory.timestamp).label('date')
             ).join(Character).filter(
-                Character.world == world_lower
+                Character.world == world_lower,
+                CharacterHistory.id > 0  # Apenas registros reais
             )
             
             if cutoff_date:
@@ -165,11 +166,12 @@ async def get_world_active_history(world: str, days: int = 30, db: Session = Dep
             if not characters:
                 return []
             
-            # Busca todas as datas únicas no período
+            # Busca todas as datas únicas no período (apenas registros reais)
             dates_query = db.query(
                 func.date(CharacterHistory.timestamp).label('date')
             ).join(Character).filter(
-                Character.world == world_lower
+                Character.world == world_lower,
+                CharacterHistory.id > 0  # Apenas registros reais
             )
             
             if cutoff_date:
