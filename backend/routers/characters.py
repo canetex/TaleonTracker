@@ -160,7 +160,8 @@ async def get_character(character_id: int, days: int = 0, db: Session = Depends(
     response = enrich_character_response(character, db)
     
     # Preenche dias faltantes no histórico para garantir que vá até hoje
-    if days > 0 and response.get('history'):
+    # Sempre preenche, mesmo quando days=0 (usa o último registro como referência)
+    if response.get('history'):
         history = response['history']
         if history:
             # Ordena por data
@@ -169,27 +170,47 @@ async def get_character(character_id: int, days: int = 0, db: Session = Depends(
             # Cria dicionário de datas existentes
             history_dict = {}
             for h in history:
-                date_key = datetime.fromisoformat(h['timestamp'].replace('Z', '+00:00')).date()
-                history_dict[date_key] = h
+                # Converte timestamp para date
+                try:
+                    if isinstance(h['timestamp'], str):
+                        date_key = datetime.fromisoformat(h['timestamp'].replace('Z', '+00:00')).date()
+                    else:
+                        date_key = h['timestamp'].date()
+                    history_dict[date_key] = h
+                except Exception as e:
+                    logger.warning(f"Erro ao processar timestamp {h['timestamp']}: {str(e)}")
+                    continue
             
-            # Preenche dias faltantes
-            start_date = datetime.utcnow().date() - timedelta(days=days)
+            # Determina período para preencher
+            if days > 0:
+                start_date = datetime.utcnow().date() - timedelta(days=days)
+            else:
+                # Se days=0, usa a primeira data do histórico como início
+                first_date = min(history_dict.keys()) if history_dict else datetime.utcnow().date()
+                start_date = first_date
+            
             today = datetime.utcnow().date()
             current_date = start_date
             filled_history = []
             
-            last_level = history[0]['level'] if history else 0
-            last_experience = history[0]['experience'] if history else 0
+            # Busca último histórico antes de start_date para usar como base
+            last_level = character.level or 0
+            last_experience = 0
+            if history:
+                # Usa o primeiro registro como base inicial
+                first_h = history[0]
+                last_level = first_h.get('level', character.level or 0)
+                last_experience = first_h.get('experience', 0)
             
             while current_date <= today:
                 if current_date in history_dict:
                     # Usa o valor existente
                     h = history_dict[current_date]
-                    last_level = h['level']
-                    last_experience = h['experience']
+                    last_level = h.get('level', last_level)
+                    last_experience = h.get('experience', last_experience)
                     filled_history.append(h)
                 else:
-                    # Cria registro com valores do dia anterior
+                    # Cria registro com valores do dia anterior (ou do último registro conhecido)
                     filled_history.append({
                         'id': 0,
                         'character_id': character_id,

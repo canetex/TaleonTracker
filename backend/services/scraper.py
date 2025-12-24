@@ -1,6 +1,7 @@
 import aiohttp
 from bs4 import BeautifulSoup
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from models.character import Character
 from models.character_history import CharacterHistory
 from datetime import datetime
@@ -119,9 +120,10 @@ async def scrape_character_data(character_name: str, db: Session, world: str = N
         # Verifica se a página é uma página de erro (personagem não encontrado)
         # A página de erro contém "Could not find any player" ou "Could not find any guild"
         page_text = soup.get_text().lower()
+        character_not_found = False
         if 'could not find any player' in page_text or 'could not find any guild' in page_text:
             logger.warning(f"Personagem {character_name} não encontrado no servidor Taleon (página de erro detectada)")
-            return False
+            character_not_found = True
         
         # Verifica se há uma tabela de busca (indicando que o personagem não foi encontrado)
         search_table = soup.find('table', {'class': 'table table-striped'})
@@ -130,7 +132,7 @@ async def scrape_character_data(character_name: str, db: Session, world: str = N
             search_text = search_table.get_text().lower()
             if 'could not find any player' in search_text:
                 logger.warning(f"Personagem {character_name} não encontrado (tabela de busca detectada)")
-                return False
+                character_not_found = True
         
         # Encontra a tabela com as informações do personagem
         character_table = soup.find('table', {'class': 'table'})
@@ -145,9 +147,38 @@ async def scrape_character_data(character_name: str, db: Session, world: str = N
         # Verifica se a tabela encontrada é realmente uma tabela de perfil de personagem
         # Tabelas de perfil têm campos como "Name:", "Level:", "Vocation:", etc.
         table_text = character_table.get_text().lower()
-        if 'could not find' in table_text or 'players' in table_text and 'guilds' in table_text:
+        if 'could not find' in table_text or ('players' in table_text and 'guilds' in table_text):
             logger.warning(f"Tabela encontrada é uma tabela de busca, não um perfil de personagem: {character_name}")
-            return False
+            character_not_found = True
+        
+        # Se personagem não foi encontrado, cria registro com 0 de experiência e level do dia anterior
+        if character_not_found:
+            character = db.query(Character).filter(Character.name == character_name).first()
+            if character:
+                # Busca último histórico para pegar level e experiência
+                last_history = db.query(CharacterHistory).filter(
+                    CharacterHistory.character_id == character.id
+                ).order_by(CharacterHistory.timestamp.desc()).first()
+                
+                level = character.level or (last_history.level if last_history else 0)
+                experience = last_history.experience if last_history else 0
+                
+                # Cria registro com 0 de experiência diária
+                history = CharacterHistory(
+                    character_id=character.id,
+                    level=level,
+                    experience=experience,
+                    daily_experience=0,
+                    deaths=0,
+                    timestamp=datetime.utcnow()
+                )
+                db.add(history)
+                db.commit()
+                logger.info(f"Registro criado para {character_name} (não encontrado): level={level}, exp={experience}, daily=0")
+                return True
+            else:
+                logger.error(f"Character {character_name} not found in database")
+                return False
         
         # Log da estrutura da tabela
         logger.info(f"Estrutura da tabela encontrada: {character_table.prettify()[:500]}")
@@ -278,21 +309,46 @@ async def scrape_character_data(character_name: str, db: Session, world: str = N
                     deaths = int(deaths_text) if deaths_text else 0
                     logger.info(f"Mortes extraídas de '{deaths_text}' para {deaths}")
                 
-                # Cria um novo registro de histórico
-                try:
-                    history = CharacterHistory(
-                        character_id=character.id,
-                        level=level,  # Usando o mesmo nível já processado
-                        experience=experience,
-                        daily_experience=daily_experience,
-                        deaths=deaths,
-                        timestamp=datetime.utcnow()
-                    )
-                    db.add(history)
-                    logger.info(f"Registro de histórico criado para {character_name}")
-                except Exception as e:
-                    logger.error(f"Erro ao criar registro de histórico: {str(e)}")
-                    raise
+                # Verifica se já existe registro para hoje (evita duplicatas)
+                today = datetime.utcnow().date()
+                existing_today = db.query(CharacterHistory).filter(
+                    CharacterHistory.character_id == character.id,
+                    func.date(CharacterHistory.timestamp) == today
+                ).first()
+                
+                if existing_today:
+                    # Atualiza registro existente
+                    existing_today.level = level
+                    existing_today.experience = experience
+                    existing_today.daily_experience = daily_experience
+                    existing_today.deaths = deaths
+                    logger.info(f"Registro de hoje atualizado para {character_name}")
+                else:
+                    # Busca último histórico para comparar
+                    last_history = db.query(CharacterHistory).filter(
+                        CharacterHistory.character_id == character.id
+                    ).order_by(CharacterHistory.timestamp.desc()).first()
+                    
+                    # Se não há mudança na experiência, cria registro com 0 de daily_experience
+                    if last_history and last_history.experience == experience:
+                        daily_experience = 0
+                        logger.info(f"Sem mudança de experiência para {character_name}, daily_experience=0")
+                    
+                    # Cria um novo registro de histórico
+                    try:
+                        history = CharacterHistory(
+                            character_id=character.id,
+                            level=level,  # Usando o mesmo nível já processado
+                            experience=experience,
+                            daily_experience=daily_experience,
+                            deaths=deaths,
+                            timestamp=datetime.utcnow()
+                        )
+                        db.add(history)
+                        logger.info(f"Registro de histórico criado para {character_name}")
+                    except Exception as e:
+                        logger.error(f"Erro ao criar registro de histórico: {str(e)}")
+                        raise
                 
                 db.commit()
                 logger.info(f"Character {character_name} updated successfully")
