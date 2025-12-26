@@ -19,8 +19,8 @@ import {
   TableHead,
   TableRow,
   IconButton,
-  Chip,
   Tooltip,
+  TextField,
 } from '@mui/material';
 import { Add as AddIcon, Delete as DeleteIcon, Share as ShareIcon, OpenInNew as OpenInNewIcon } from '@mui/icons-material';
 import { Line } from 'react-chartjs-2';
@@ -54,8 +54,10 @@ const CharacterCompare: React.FC = () => {
   const [selectedChars, setSelectedChars] = useState<number[]>([0, 0]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [maxChars, setMaxChars] = useState(5);
+  const maxChars = 5;
   const [urlLoaded, setUrlLoaded] = useState(false);
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
 
   useEffect(() => {
     fetchCharacters();
@@ -65,6 +67,12 @@ const CharacterCompare: React.FC = () => {
     // Carrega personagens da URL se existirem (apenas uma vez após carregar a lista de personagens)
     if (characters.length > 0 && !urlLoaded) {
       const charIds = searchParams.get('chars');
+      const fromParam = searchParams.get('from');
+      const toParam = searchParams.get('to');
+      
+      if (fromParam) setDateFrom(fromParam);
+      if (toParam) setDateTo(toParam);
+      
       if (charIds) {
         const ids = charIds.split(',').map(id => parseInt(id)).filter(id => !isNaN(id) && id > 0);
         if (ids.length >= 2) {
@@ -94,17 +102,23 @@ const CharacterCompare: React.FC = () => {
     }
   };
 
+  const updateUrlParams = (charIds: number[], from?: string, to?: string) => {
+    const params: Record<string, string> = {};
+    if (charIds.length >= 2) {
+      params.chars = charIds.join(',');
+    }
+    if (from) params.from = from;
+    if (to) params.to = to;
+    setSearchParams(params);
+  };
+
   const handleCharChange = (index: number, charId: number) => {
     const newSelected = [...selectedChars];
     newSelected[index] = charId;
     setSelectedChars(newSelected);
     // Atualiza URL com os personagens selecionados
     const validIds = newSelected.filter(id => id > 0);
-    if (validIds.length >= 2) {
-      setSearchParams({ chars: validIds.join(',') });
-    } else {
-      setSearchParams({});
-    }
+    updateUrlParams(validIds, dateFrom || undefined, dateTo || undefined);
   };
 
   const handleAddChar = () => {
@@ -119,35 +133,87 @@ const CharacterCompare: React.FC = () => {
       setSelectedChars(newSelected);
       // Atualiza URL com os personagens selecionados
       const validIds = newSelected.filter(id => id > 0);
-      if (validIds.length >= 2) {
-        setSearchParams({ chars: validIds.join(',') });
-      } else {
-        setSearchParams({});
-      }
+      updateUrlParams(validIds, dateFrom || undefined, dateTo || undefined);
     }
+  };
+
+  const handleDateFromChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setDateFrom(value);
+    const validIds = selectedChars.filter(id => id > 0);
+    updateUrlParams(validIds, value || undefined, dateTo || undefined);
+  };
+
+  const handleDateToChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setDateTo(value);
+    const validIds = selectedChars.filter(id => id > 0);
+    updateUrlParams(validIds, dateFrom || undefined, value || undefined);
   };
 
   const handleShareLink = () => {
     const validIds = selectedChars.filter(id => id > 0);
     if (validIds.length >= 2) {
-      const shareUrl = `${window.location.origin}/characters/compare?chars=${validIds.join(',')}`;
-      navigator.clipboard.writeText(shareUrl).then(() => {
-        alert('Link copiado para a área de transferência!');
-      }).catch(() => {
+      const params = new URLSearchParams();
+      params.set('chars', validIds.join(','));
+      if (dateFrom) params.set('from', dateFrom);
+      if (dateTo) params.set('to', dateTo);
+      const shareUrl = `${window.location.origin}/characters/compare?${params.toString()}`;
+      
+      // Verifica se navigator.clipboard existe e está disponível
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(shareUrl).then(() => {
+          alert('Link copiado para a área de transferência!');
+        }).catch(() => {
+          // Fallback para navegadores que não suportam clipboard API
+          copyToClipboardFallback(shareUrl);
+        });
+      } else {
         // Fallback para navegadores que não suportam clipboard API
-        const textArea = document.createElement('textarea');
-        textArea.value = shareUrl;
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-        alert('Link copiado para a área de transferência!');
-      });
+        copyToClipboardFallback(shareUrl);
+      }
     }
+  };
+
+  const copyToClipboardFallback = (text: string) => {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    textArea.style.top = '-999999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      document.execCommand('copy');
+      alert('Link copiado para a área de transferência!');
+    } catch (err) {
+      alert('Erro ao copiar link. Por favor, copie manualmente: ' + text);
+    }
+    document.body.removeChild(textArea);
   };
 
   const getTaleonUrl = (world: string, characterName: string): string => {
     return `https://${world.toLowerCase()}.taleon.online/characterprofile.php?name=${encodeURIComponent(characterName)}`;
+  };
+
+  const filterHistoryByDate = (history: CharacterHistory[]): CharacterHistory[] => {
+    if (!dateFrom && !dateTo) return history;
+    
+    return history.filter((h: CharacterHistory) => {
+      const timestamp = new Date(h.timestamp);
+      const fromDate = dateFrom ? new Date(dateFrom) : null;
+      const toDate = dateTo ? new Date(dateTo) : null;
+      
+      if (fromDate && toDate) {
+        return timestamp >= fromDate && timestamp <= toDate;
+      } else if (fromDate) {
+        return timestamp >= fromDate;
+      } else if (toDate) {
+        return timestamp <= toDate;
+      }
+      return true;
+    });
   };
 
   if (loading) {
@@ -235,6 +301,26 @@ const CharacterCompare: React.FC = () => {
         <>
           <Grid container spacing={3} mb={3}>
             <Grid item xs={12}>
+              <Box display="flex" gap={2} mb={2} alignItems="center" flexWrap="wrap">
+                <TextField
+                  label="Data Inicial"
+                  type="date"
+                  value={dateFrom}
+                  onChange={handleDateFromChange}
+                  InputLabelProps={{
+                    shrink: true,
+                  }}
+                />
+                <TextField
+                  label="Data Final"
+                  type="date"
+                  value={dateTo}
+                  onChange={handleDateToChange}
+                  InputLabelProps={{
+                    shrink: true,
+                  }}
+                />
+              </Box>
               <TableContainer component={Paper}>
                 <Table>
                   <TableHead>
@@ -242,12 +328,33 @@ const CharacterCompare: React.FC = () => {
                       <TableCell>Atributo</TableCell>
                       {selectedCharacters.map((char) => (
                         <TableCell key={char.id} align="right">
-                          <Link 
-                            to={`/characters/${char.id}`}
-                            style={{ color: 'inherit', textDecoration: 'none', fontWeight: 'bold' }}
-                          >
-                            {char.name}
-                          </Link>
+                          <Box display="flex" alignItems="center" justifyContent="flex-end" gap={1}>
+                            <Link 
+                              to={`/characters/${char.id}`}
+                              style={{ color: 'inherit', textDecoration: 'none', fontWeight: 'bold' }}
+                            >
+                              {char.name}
+                            </Link>
+                            <Tooltip title="Ver no Taleon">
+                              <IconButton
+                                size="small"
+                                href={getTaleonUrl(char.world, char.name)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <OpenInNewIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Ver detalhes">
+                              <IconButton
+                                size="small"
+                                component={Link}
+                                to={`/characters/${char.id}`}
+                              >
+                                <OpenInNewIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
                         </TableCell>
                       ))}
                     </TableRow>
@@ -256,146 +363,31 @@ const CharacterCompare: React.FC = () => {
                     <TableRow>
                       <TableCell component="th" scope="row">Nível</TableCell>
                       {selectedCharacters.map((char) => (
-                        <TableCell key={char.id} align="right">
-                          <Box display="flex" alignItems="center" justifyContent="flex-end" gap={1}>
-                            {char.level}
-                            <Tooltip title="Ver no Taleon">
-                              <IconButton
-                                size="small"
-                                href={getTaleonUrl(char.world, char.name)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <OpenInNewIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Ver detalhes">
-                              <IconButton
-                                size="small"
-                                component={Link}
-                                to={`/characters/${char.id}`}
-                              >
-                                <OpenInNewIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          </Box>
-                        </TableCell>
+                        <TableCell key={char.id} align="right">{char.level}</TableCell>
                       ))}
                     </TableRow>
                     <TableRow>
                       <TableCell component="th" scope="row">Experiência</TableCell>
                       {selectedCharacters.map((char) => (
-                        <TableCell key={char.id} align="right">
-                          <Box display="flex" alignItems="center" justifyContent="flex-end" gap={1}>
-                            {char.experience.toLocaleString()}
-                            <Tooltip title="Ver no Taleon">
-                              <IconButton
-                                size="small"
-                                href={getTaleonUrl(char.world, char.name)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <OpenInNewIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Ver detalhes">
-                              <IconButton
-                                size="small"
-                                component={Link}
-                                to={`/characters/${char.id}`}
-                              >
-                                <OpenInNewIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          </Box>
-                        </TableCell>
+                        <TableCell key={char.id} align="right">{char.experience.toLocaleString()}</TableCell>
                       ))}
                     </TableRow>
                     <TableRow>
                       <TableCell component="th" scope="row">Experiência nas últimas 24hs</TableCell>
                       {selectedCharacters.map((char) => (
-                        <TableCell key={char.id} align="right">
-                          <Box display="flex" alignItems="center" justifyContent="flex-end" gap={1}>
-                            {char.daily_experience.toLocaleString()}
-                            <Tooltip title="Ver no Taleon">
-                              <IconButton
-                                size="small"
-                                href={getTaleonUrl(char.world, char.name)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <OpenInNewIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Ver detalhes">
-                              <IconButton
-                                size="small"
-                                component={Link}
-                                to={`/characters/${char.id}`}
-                              >
-                                <OpenInNewIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          </Box>
-                        </TableCell>
+                        <TableCell key={char.id} align="right">{char.daily_experience.toLocaleString()}</TableCell>
                       ))}
                     </TableRow>
                     <TableRow>
                       <TableCell component="th" scope="row">Vocação</TableCell>
                       {selectedCharacters.map((char) => (
-                        <TableCell key={char.id} align="right">
-                          <Box display="flex" alignItems="center" justifyContent="flex-end" gap={1}>
-                            {char.vocation}
-                            <Tooltip title="Ver no Taleon">
-                              <IconButton
-                                size="small"
-                                href={getTaleonUrl(char.world, char.name)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <OpenInNewIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Ver detalhes">
-                              <IconButton
-                                size="small"
-                                component={Link}
-                                to={`/characters/${char.id}`}
-                              >
-                                <OpenInNewIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          </Box>
-                        </TableCell>
+                        <TableCell key={char.id} align="right">{char.vocation}</TableCell>
                       ))}
                     </TableRow>
                     <TableRow>
                       <TableCell component="th" scope="row">Mundo</TableCell>
                       {selectedCharacters.map((char) => (
-                        <TableCell key={char.id} align="right">
-                          <Box display="flex" alignItems="center" justifyContent="flex-end" gap={1}>
-                            {char.world}
-                            <Tooltip title="Ver no Taleon">
-                              <IconButton
-                                size="small"
-                                href={getTaleonUrl(char.world, char.name)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <OpenInNewIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Ver detalhes">
-                              <IconButton
-                                size="small"
-                                component={Link}
-                                to={`/characters/${char.id}`}
-                              >
-                                <OpenInNewIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          </Box>
-                        </TableCell>
+                        <TableCell key={char.id} align="right">{char.world}</TableCell>
                       ))}
                     </TableRow>
                   </TableBody>
@@ -469,18 +461,19 @@ const CharacterCompare: React.FC = () => {
                     <Line
                       data={{
                         labels: (() => {
-                          // Pega todas as datas únicas dos históricos dos personagens selecionados
+                          // Pega todas as datas únicas dos históricos dos personagens selecionados (filtrados)
                           const allDates = new Set<string>();
                           selectedCharacters
                             .filter(char => char.history && char.history.length > 0)
                             .forEach(char => {
-                              char.history.forEach((h: CharacterHistory) => {
+                              const filteredHistory = filterHistoryByDate(char.history);
+                              filteredHistory.forEach((h: CharacterHistory) => {
                                 allDates.add(new Date(h.timestamp).toLocaleDateString());
                               });
                             });
                           return Array.from(allDates).sort((a, b) => 
                             new Date(a).getTime() - new Date(b).getTime()
-                          ).slice(-30);
+                          );
                         })(),
                         datasets: selectedCharacters
                           .filter(char => char.history && char.history.length > 0)
@@ -492,9 +485,9 @@ const CharacterCompare: React.FC = () => {
                               'rgb(54, 162, 235)',
                               'rgb(153, 102, 255)',
                             ];
-                            const sortedHistory = [...(char.history || [])]
-                              .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-                              .slice(-30);
+                            const filteredHistory = filterHistoryByDate(char.history);
+                            const sortedHistory = [...filteredHistory]
+                              .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
                             return {
                               label: char.name,
                               data: sortedHistory.map((h: CharacterHistory) => h.daily_experience),
