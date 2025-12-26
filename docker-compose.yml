@@ -35,7 +35,7 @@ services:
       - taleon-network
 
   db:
-    image: postgres:13
+    image: postgres:15-alpine
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
