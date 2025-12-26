@@ -216,6 +216,26 @@ const CharacterCompare: React.FC = () => {
     });
   };
 
+  // Função helper para obter labels ordenados e únicos
+  const getOrderedDateLabels = (): string[] => {
+    const allTimestamps = new Set<number>();
+    selectedCharacters
+      .filter(char => char.history && char.history.length > 0)
+      .forEach(char => {
+        const filteredHistory = filterHistoryByDate(char.history);
+        filteredHistory.forEach((h: CharacterHistory) => {
+          const date = new Date(h.timestamp);
+          // Usa timestamp do início do dia para agrupar por dia
+          const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+          allTimestamps.add(dayStart);
+        });
+      });
+    // Ordena por timestamp e converte para string de data
+    return Array.from(allTimestamps)
+      .sort((a, b) => a - b)
+      .map(ts => new Date(ts).toLocaleDateString());
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
@@ -405,20 +425,7 @@ const CharacterCompare: React.FC = () => {
                     </Typography>
                     <Line
                       data={{
-                        labels: (() => {
-                          // Pega todas as datas únicas dos históricos dos personagens selecionados
-                          const allDates = new Set<string>();
-                          selectedCharacters
-                            .filter(char => char.history && char.history.length > 0)
-                            .forEach(char => {
-                              char.history.forEach((h: CharacterHistory) => {
-                                allDates.add(new Date(h.timestamp).toLocaleDateString());
-                              });
-                            });
-                          return Array.from(allDates).sort((a, b) => 
-                            new Date(a).getTime() - new Date(b).getTime()
-                          ).slice(-30);
-                        })(),
+                        labels: getOrderedDateLabels(),
                         datasets: selectedCharacters
                           .filter(char => char.history && char.history.length > 0)
                           .map((char, index) => {
@@ -429,12 +436,24 @@ const CharacterCompare: React.FC = () => {
                               'rgb(54, 162, 235)',
                               'rgb(153, 102, 255)',
                             ];
-                            const sortedHistory = [...(char.history || [])]
-                              .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-                              .slice(-30);
+                            const filteredHistory = filterHistoryByDate(char.history);
+                            const sortedHistory = [...filteredHistory]
+                              .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+                            
+                            // Cria um mapa de data para nível
+                            const dateToLevel = new Map<string, number>();
+                            sortedHistory.forEach((h: CharacterHistory) => {
+                              const date = new Date(h.timestamp);
+                              const dayKey = new Date(date.getFullYear(), date.getMonth(), date.getDate()).toLocaleDateString();
+                              // Mantém o último valor do dia
+                              dateToLevel.set(dayKey, h.level);
+                            });
+                            
+                            const labels = getOrderedDateLabels();
+                            
                             return {
                               label: char.name,
-                              data: sortedHistory.map((h: CharacterHistory) => h.level),
+                              data: labels.map(label => dateToLevel.get(label) ?? null),
                               borderColor: colors[index % colors.length],
                               backgroundColor: colors[index % colors.length].replace('rgb', 'rgba').replace(')', ', 0.2)'),
                               tension: 0.1,
@@ -460,21 +479,7 @@ const CharacterCompare: React.FC = () => {
                     </Typography>
                     <Line
                       data={{
-                        labels: (() => {
-                          // Pega todas as datas únicas dos históricos dos personagens selecionados (filtrados)
-                          const allDates = new Set<string>();
-                          selectedCharacters
-                            .filter(char => char.history && char.history.length > 0)
-                            .forEach(char => {
-                              const filteredHistory = filterHistoryByDate(char.history);
-                              filteredHistory.forEach((h: CharacterHistory) => {
-                                allDates.add(new Date(h.timestamp).toLocaleDateString());
-                              });
-                            });
-                          return Array.from(allDates).sort((a, b) => 
-                            new Date(a).getTime() - new Date(b).getTime()
-                          );
-                        })(),
+                        labels: getOrderedDateLabels(),
                         datasets: selectedCharacters
                           .filter(char => char.history && char.history.length > 0)
                           .map((char, index) => {
@@ -488,9 +493,21 @@ const CharacterCompare: React.FC = () => {
                             const filteredHistory = filterHistoryByDate(char.history);
                             const sortedHistory = [...filteredHistory]
                               .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+                            
+                            // Cria um mapa de data para daily_experience
+                            const dateToExp = new Map<string, number>();
+                            sortedHistory.forEach((h: CharacterHistory) => {
+                              const date = new Date(h.timestamp);
+                              const dayKey = new Date(date.getFullYear(), date.getMonth(), date.getDate()).toLocaleDateString();
+                              // Mantém o último valor do dia
+                              dateToExp.set(dayKey, h.daily_experience);
+                            });
+                            
+                            const labels = getOrderedDateLabels();
+                            
                             return {
                               label: char.name,
-                              data: sortedHistory.map((h: CharacterHistory) => h.daily_experience),
+                              data: labels.map(label => dateToExp.get(label) ?? null),
                               borderColor: colors[index % colors.length],
                               backgroundColor: colors[index % colors.length].replace('rgb', 'rgba').replace(')', ', 0.2)'),
                               tension: 0.1,
