@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -20,8 +20,9 @@ import {
   TableRow,
   IconButton,
   Chip,
+  Tooltip,
 } from '@mui/material';
-import { Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { Add as AddIcon, Delete as DeleteIcon, Share as ShareIcon, OpenInNew as OpenInNewIcon } from '@mui/icons-material';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -48,15 +49,37 @@ ChartJS.register(
 
 const CharacterCompare: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedChars, setSelectedChars] = useState<number[]>([0, 0]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [maxChars, setMaxChars] = useState(5);
+  const [urlLoaded, setUrlLoaded] = useState(false);
 
   useEffect(() => {
     fetchCharacters();
   }, []);
+
+  useEffect(() => {
+    // Carrega personagens da URL se existirem (apenas uma vez após carregar a lista de personagens)
+    if (characters.length > 0 && !urlLoaded) {
+      const charIds = searchParams.get('chars');
+      if (charIds) {
+        const ids = charIds.split(',').map(id => parseInt(id)).filter(id => !isNaN(id) && id > 0);
+        if (ids.length >= 2) {
+          // Verifica se os IDs existem na lista de personagens
+          const validIds = ids.filter(id => characters.some(c => c.id === id));
+          if (validIds.length >= 2) {
+            setSelectedChars([...validIds, ...Array(Math.max(0, validIds.length - 2)).fill(0)]);
+            setUrlLoaded(true);
+          }
+        }
+      } else {
+        setUrlLoaded(true);
+      }
+    }
+  }, [characters, urlLoaded, searchParams]);
 
   const fetchCharacters = async () => {
     try {
@@ -75,6 +98,13 @@ const CharacterCompare: React.FC = () => {
     const newSelected = [...selectedChars];
     newSelected[index] = charId;
     setSelectedChars(newSelected);
+    // Atualiza URL com os personagens selecionados
+    const validIds = newSelected.filter(id => id > 0);
+    if (validIds.length >= 2) {
+      setSearchParams({ chars: validIds.join(',') });
+    } else {
+      setSearchParams({});
+    }
   };
 
   const handleAddChar = () => {
@@ -87,7 +117,37 @@ const CharacterCompare: React.FC = () => {
     if (selectedChars.length > 2) {
       const newSelected = selectedChars.filter((_, i) => i !== index);
       setSelectedChars(newSelected);
+      // Atualiza URL com os personagens selecionados
+      const validIds = newSelected.filter(id => id > 0);
+      if (validIds.length >= 2) {
+        setSearchParams({ chars: validIds.join(',') });
+      } else {
+        setSearchParams({});
+      }
     }
+  };
+
+  const handleShareLink = () => {
+    const validIds = selectedChars.filter(id => id > 0);
+    if (validIds.length >= 2) {
+      const shareUrl = `${window.location.origin}/characters/compare?chars=${validIds.join(',')}`;
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        alert('Link copiado para a área de transferência!');
+      }).catch(() => {
+        // Fallback para navegadores que não suportam clipboard API
+        const textArea = document.createElement('textarea');
+        textArea.value = shareUrl;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        alert('Link copiado para a área de transferência!');
+      });
+    }
+  };
+
+  const getTaleonUrl = (world: string, characterName: string): string => {
+    return `https://${world.toLowerCase()}.taleon.online/characterprofile.php?name=${encodeURIComponent(characterName)}`;
   };
 
   if (loading) {
@@ -115,9 +175,20 @@ const CharacterCompare: React.FC = () => {
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4">Comparar Personagens</Typography>
-        <Button variant="outlined" onClick={() => navigate('/characters')}>
-          Voltar
-        </Button>
+        <Box display="flex" gap={2}>
+          {selectedCharacters.length >= 2 && (
+            <Button
+              variant="contained"
+              startIcon={<ShareIcon />}
+              onClick={handleShareLink}
+            >
+              Compartilhar Link
+            </Button>
+          )}
+          <Button variant="outlined" onClick={() => navigate('/characters')}>
+            Voltar
+          </Button>
+        </Box>
       </Box>
 
       <Grid container spacing={3} mb={3}>
@@ -185,14 +256,58 @@ const CharacterCompare: React.FC = () => {
                     <TableRow>
                       <TableCell component="th" scope="row">Nível</TableCell>
                       {selectedCharacters.map((char) => (
-                        <TableCell key={char.id} align="right">{char.level}</TableCell>
+                        <TableCell key={char.id} align="right">
+                          <Box display="flex" alignItems="center" justifyContent="flex-end" gap={1}>
+                            {char.level}
+                            <Tooltip title="Ver no Taleon">
+                              <IconButton
+                                size="small"
+                                href={getTaleonUrl(char.world, char.name)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <OpenInNewIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Ver detalhes">
+                              <IconButton
+                                size="small"
+                                component={Link}
+                                to={`/characters/${char.id}`}
+                              >
+                                <OpenInNewIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                        </TableCell>
                       ))}
                     </TableRow>
                     <TableRow>
                       <TableCell component="th" scope="row">Experiência</TableCell>
                       {selectedCharacters.map((char) => (
                         <TableCell key={char.id} align="right">
-                          {char.experience.toLocaleString()}
+                          <Box display="flex" alignItems="center" justifyContent="flex-end" gap={1}>
+                            {char.experience.toLocaleString()}
+                            <Tooltip title="Ver no Taleon">
+                              <IconButton
+                                size="small"
+                                href={getTaleonUrl(char.world, char.name)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <OpenInNewIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Ver detalhes">
+                              <IconButton
+                                size="small"
+                                component={Link}
+                                to={`/characters/${char.id}`}
+                              >
+                                <OpenInNewIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
                         </TableCell>
                       ))}
                     </TableRow>
@@ -200,20 +315,87 @@ const CharacterCompare: React.FC = () => {
                       <TableCell component="th" scope="row">Experiência nas últimas 24hs</TableCell>
                       {selectedCharacters.map((char) => (
                         <TableCell key={char.id} align="right">
-                          {char.daily_experience.toLocaleString()}
+                          <Box display="flex" alignItems="center" justifyContent="flex-end" gap={1}>
+                            {char.daily_experience.toLocaleString()}
+                            <Tooltip title="Ver no Taleon">
+                              <IconButton
+                                size="small"
+                                href={getTaleonUrl(char.world, char.name)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <OpenInNewIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Ver detalhes">
+                              <IconButton
+                                size="small"
+                                component={Link}
+                                to={`/characters/${char.id}`}
+                              >
+                                <OpenInNewIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
                         </TableCell>
                       ))}
                     </TableRow>
                     <TableRow>
                       <TableCell component="th" scope="row">Vocação</TableCell>
                       {selectedCharacters.map((char) => (
-                        <TableCell key={char.id} align="right">{char.vocation}</TableCell>
+                        <TableCell key={char.id} align="right">
+                          <Box display="flex" alignItems="center" justifyContent="flex-end" gap={1}>
+                            {char.vocation}
+                            <Tooltip title="Ver no Taleon">
+                              <IconButton
+                                size="small"
+                                href={getTaleonUrl(char.world, char.name)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <OpenInNewIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Ver detalhes">
+                              <IconButton
+                                size="small"
+                                component={Link}
+                                to={`/characters/${char.id}`}
+                              >
+                                <OpenInNewIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                        </TableCell>
                       ))}
                     </TableRow>
                     <TableRow>
                       <TableCell component="th" scope="row">Mundo</TableCell>
                       {selectedCharacters.map((char) => (
-                        <TableCell key={char.id} align="right">{char.world}</TableCell>
+                        <TableCell key={char.id} align="right">
+                          <Box display="flex" alignItems="center" justifyContent="flex-end" gap={1}>
+                            {char.world}
+                            <Tooltip title="Ver no Taleon">
+                              <IconButton
+                                size="small"
+                                href={getTaleonUrl(char.world, char.name)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <OpenInNewIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Ver detalhes">
+                              <IconButton
+                                size="small"
+                                component={Link}
+                                to={`/characters/${char.id}`}
+                              >
+                                <OpenInNewIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                        </TableCell>
                       ))}
                     </TableRow>
                   </TableBody>
@@ -315,7 +497,7 @@ const CharacterCompare: React.FC = () => {
                               .slice(-30);
                             return {
                               label: char.name,
-                              data: sortedHistory.map((h: CharacterHistory) => h.experience),
+                              data: sortedHistory.map((h: CharacterHistory) => h.daily_experience),
                               borderColor: colors[index % colors.length],
                               backgroundColor: colors[index % colors.length].replace('rgb', 'rgba').replace(')', ', 0.2)'),
                               tension: 0.1,
